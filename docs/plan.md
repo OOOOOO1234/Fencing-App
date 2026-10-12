@@ -6,6 +6,8 @@ This is a draft. The open questions at the bottom change the data model, the mod
 
 ## Decisions
 
+The product picture below was confirmed.
+
 - Audience: a service for everyone. Fencers, coaches, and clubs can each have an account. Video stays private to the uploader and to people they invite.
 - Weapon: sabre only. Right of way decides who is awarded the touch. A light on the box is not enough.
 - Footage: bouts only. Lessons are not recorded.
