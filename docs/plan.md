@@ -14,6 +14,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Actions for version one: simple attack, attack on the preparation, compound attack, beat attack, counterattack, parry-riposte, remise, point in line, and preparation only.
 - Camera: any setup. Phone beside the strip, a club camera, a tournament stream, or a mix of those can all be uploaded. The first model has to be trained across those setups, so it will need more labeled bouts than a single camera angle would.
 - Who scored: when the scoreboard is visible, the site reads it to see which fencer received the point. When the scoreboard does not show who received the point, the site judges from the action whose point it looks like. That result is the count. The uploader does not type in the referee's call.
+- Whose stats: the site asks which fencer to analyze, and the stats cover only that fencer.
 
 ## What the product is
 
@@ -201,7 +202,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 5. Is the nine-action list the one you want, or do you want named parries and fleche/flunge in version one? Answer: start with the nine actions above.
 6. What camera will the videos come from: phone at the side of the strip, a club camera, a tournament stream, or a mix? Answer: any of those.
 7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video? Answer: read the scoreboard when it shows the point. Otherwise judge from the action whose point it looks like. The site still analyzes videos with no scoreboard.
-8. Do we stat one fencer (the account) or both fencers in the bout?
+8. Do we stat one fencer (the account) or both fencers in the bout? Answer: only the fencer the site asks for.
 9. How much footage do you already have, and is any of it already tagged?
 10. Who labels the first 30 bouts?
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
