@@ -19,7 +19,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Referee: every reference bout has a referee. The scoreboard shows the referee's call for who received the point.
 - Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
 - Timing: after upload, the site finishes watching the bout, then shows all the stats.
-- Scope: each video gets its own stats. The user picks which videos to add together later. Videos can also be sorted into a playlist for each competition. Opening a competition playlist shows one combined stat table for every video in it.
+- Scope: each video gets its own stats. The user picks which videos to add together later. Videos can also be sorted into a playlist for each competition. Opening a competition playlist shows one combined stat table for every video in it. A playlist is always for one fencer.
 - Minors: uploaded videos will include fencers under 18. Each video stays private to the account that uploaded it and to people that account invites.
 - Coaches: a coach can open a fencer's video and stats when that account invites them.
 - Wrong call: when the referee's call looks wrong, the site adds the side remark. The remark names who the site thinks should have received the point. The awarded result stays in the count.
@@ -239,4 +239,4 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 13. Do coaches need a login to see a student's video? Answer: yes. A coach can open the video and stats when that account invites them.
 14. Will videos include minors? Answer: yes. Video stays private to the uploader and to people they invite.
 15. Any stack you want (or want to avoid)? Default: a web app you can open in a browser, including a phone browser.
-16. Should version one compare you only to your past bouts? Default: yes. Answer: one video at a time for the stats. The user picks which videos to combine. Videos can be sorted into a playlist for each competition. Opening that playlist shows one combined stat table for every video in it.
+16. Should version one compare you only to your past bouts? Default: yes. Answer: one video at a time for the stats. The user picks which videos to combine. Videos can be sorted into a playlist for each competition. Opening that playlist shows one combined stat table for every video in it. A playlist is always for one fencer.
