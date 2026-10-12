@@ -9,6 +9,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Audience: a service for everyone. Fencers, coaches, and clubs can each have an account. Video stays private to the uploader and to people they invite.
 - Weapon: sabre only. Right of way decides who is awarded the touch. A light on the box is not enough.
 - Footage: bouts only. Lessons are not recorded.
+- Result: worked means the referee awarded you the touch. Didn't work means the referee awarded the touch to your opponent. If the call was wrong, the phrase keeps the awarded result and adds a side remark. The remark does not change the count.
 
 ## What the product is
 
@@ -34,7 +35,7 @@ Proposed outcome on each phrase:
 | No touch | Halt with no score |
 | Unknown | Not labeled yet |
 
-"Worked" is **point for**. "Didn't work" is **point against**, plus doubles if you decide a double is a failed action. No-touch is its own bucket so a safe action is not punished the same way as a touch given away.
+"Worked" is **point for**: the referee awarded you the touch. "Didn't work" is **point against**: the referee awarded the touch to your opponent. A phrase can also carry a side remark when that call was wrong. The remark is visible on the phrase and does not move the touch from one column to the other.
 
 Foil and sabre need the **awarded** touch, not the light color alone. Right of way can give the point to the fencer whose light came on second, or to the fencer who attacked into the opponent's preparation. Epee can trust the lights, including doubles. If the score box or scoreboard is not readable in the video, a person confirms who received the point.
 
@@ -192,7 +193,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 1. Who is this for first: you reviewing your own bouts, a coach reviewing students, or a club? Answer: a service for everyone.
 2. Which weapon is version one: foil, epee, or sabre? Answer: sabre only.
 3. Are the videos bouts, lessons, or both? Default if you only say "bouts": competitive bouts, not lessons. Answer: bouts only. Lessons are not recorded.
-4. Is the outcome definition above right (worked = touch awarded to you, didn't work = touch awarded to them)? How should doubles count?
+4. Is the outcome definition above right (worked = touch awarded to you, didn't work = touch awarded to them)? How should doubles count? Answer: yes for awarded touches. A wrong referee call stays in the count and gets a side remark.
 5. Is the nine-action list the one you want, or do you want named parries and fleche/flunge in version one?
 6. What camera will the videos come from: phone at the side of the strip, a club camera, a tournament stream, or a mix?
 7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video?
