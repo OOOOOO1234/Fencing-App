@@ -162,18 +162,26 @@ export default function App() {
         {view.name === 'home' ? (
           <section className="home" aria-labelledby="bouts-heading">
             <div className="hero">
-              <h1 id="bouts-heading">Your bouts</h1>
+              <h1 id="bouts-heading">
+                {bouts.length === 0 ? 'Count what works on the strip' : 'Your bouts'}
+              </h1>
               <p>
-                Upload one sabre bout video, pick left or right, tag phrases on the timeline, and
-                read attempt / success / fail rates by action.
+                One sabre bout at a time. Pick left or right, tag each phrase, and see attempt /
+                success / fail rates — Moneyball numbers, not vibes.
               </p>
+              <ol className="loop-strip" aria-label="Core loop">
+                <li>1 · Upload</li>
+                <li>2 · Left or right</li>
+                <li>3 · Tag phrases</li>
+                <li>4 · Read the rates</li>
+              </ol>
             </div>
 
             {loading ? <p className="muted">Loading…</p> : null}
 
             {!loading && bouts.length === 0 ? (
               <div className="empty-state">
-                <p>No bouts yet. Upload one video, or load the demo to see how stats look.</p>
+                <p>No bouts yet. Upload one video, or open the labeled demo to explore the stats table.</p>
                 <div className="form-actions">
                   <button
                     type="button"

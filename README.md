@@ -15,10 +15,16 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 ```bash
 npm test      # unit tests for stats
-npm run build # production build
+npm run build # production build → dist/
 ```
 
-Data stays in this browser (IndexedDB). No accounts or API keys.
+Data stays in this browser (IndexedDB). No accounts or API keys for Phase 1 (see `.env.example`).
+
+## Netlify
+
+`netlify.toml` builds with `npm run build` and publishes `dist/`, with SPA redirects to `index.html`.
+
+Preferred site name: **fencing-app** → `https://fencing-app.netlify.app`
 
 ## Core loop
 
