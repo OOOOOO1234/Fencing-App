@@ -19,6 +19,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Referee: every reference bout has a referee. The scoreboard shows the referee's call for who received the point.
 - Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
 - Timing: after upload, the site finishes watching the bout, then shows all the stats.
+- Scope: each video gets its own stats. Those per-video stats can be combined later.
 
 ## What the product is
 
@@ -235,4 +236,4 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 13. Do coaches need a login to see a student's video?
 14. Will videos include minors?
 15. Any stack you want (or want to avoid)? Default: a web app you can open in a browser, including a phone browser.
-16. Should version one compare you only to your past bouts? Default: yes.
+16. Should version one compare you only to your past bouts? Default: yes. Answer: one video at a time for the stats. Those stats can be combined later.
