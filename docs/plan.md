@@ -18,6 +18,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Reference footage: there is no private video library. The reference bouts are public sabre broadcasts listed below. The links are the reference. The video files stay on their original sites.
 - Referee: every reference bout has a referee. The scoreboard shows the referee's call for who received the point.
 - Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
+- Timing: after upload, the site finishes watching the bout, then shows all the stats.
 
 ## What the product is
 
@@ -230,7 +231,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 9. How much footage do you already have, and is any of it already tagged? Answer: none privately. Use public sabre videos as references. Each bout has a referee. The videos do not include a written list of the nine action names.
 10. Who labels the first 30 bouts? Answer: the site writes the actions. The uploaded video does not narrate them. The stats are attempts and successes for each action.
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
-12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product.
+12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product. Answer: yes. The site finishes watching the bout, then shows all the stats.
 13. Do coaches need a login to see a student's video?
 14. Will videos include minors?
 15. Any stack you want (or want to avoid)? Default: a web app you can open in a browser, including a phone browser.
