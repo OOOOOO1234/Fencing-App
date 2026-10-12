@@ -16,7 +16,8 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Who scored: when the scoreboard is visible, the site reads it to see which fencer received the point. When the scoreboard does not show who received the point, the site judges from the action whose point it looks like. That result is the count. The uploader does not type in the referee's call.
 - Whose stats: the site asks which fencer to analyze, and the stats cover only that fencer.
 - Reference footage: there is no private video library. The reference bouts are public sabre broadcasts listed below. The links are the reference. The video files stay on their original sites.
-- Referee: every reference bout has a referee. The referee's call is the source for who received the point and for the action when the referee names it.
+- Referee: every reference bout has a referee. The scoreboard shows the referee's call for who received the point.
+- Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
 
 ## What the product is
 
@@ -66,9 +67,9 @@ Proposed first action list, shared across weapons, stored with a `weapon` field 
 
 Fleche, flunge, and named parries (parry 4, parry 6, and so on) wait until the coarse list is producing stats you trust.
 
-### Phase 1 — Upload, label, and compute stats
+### Phase 1 — The site writes the actions and computes the stats
 
-No custom model. You upload a video, mark phrases on a timeline, and the site computes the table.
+The uploader sends a bout video and chooses which fencer to analyze. The site writes down each phrase: which action it was, and whether that action was successful. The video does not narrate the actions. The page then shows, for each action, how many times it was attempted and how many times it was successful.
 
 For each action:
 
@@ -80,13 +81,13 @@ For each action:
 - Share of your points that came from that action
 - The same split by score state, once score is labeled
 
-This phase is the product. Later models exist to fill the same table with less clicking.
+This table is the product. The same nine actions and the same attempt and success counts are what every later model has to produce.
 
-### Phase 2 — Automatic suggestions from a pretrained pose model
+### Phase 2 — Read the fencers with a pretrained pose model
 
-Run an existing person-pose model (no fencing training) on the video. Track both fencers. Use pose over time to **suggest** phrase boundaries and a coarse label such as "this looked like a lunge." You correct the suggestion. Corrections are stored as training rows.
+Run an existing person-pose model on the video. Track both fencers. Use pose over time to find phrase boundaries and a first guess of the action. The site writes that guess into the action log. The uploader does not correct it.
 
-Pose models see bodies. They do not see a foil tip, a parry, or a referee's right-of-way call. Phase 2 will be wrong often, on purpose, so your corrections become the dataset.
+Pose models see bodies. They do not see a sabre tip, a parry, or a referee's right-of-way call. The scoreboard, when it is visible, supplies who received the point. When it is not visible, the action itself supplies whose point it looks like.
 
 ### Phase 3 — Train a small action model on those corrections
 
@@ -161,18 +162,15 @@ Starter target before we call a model worth turning on: about 30 fully labeled b
 
 - The pose model. Use a pretrained one (MediaPipe Pose or RTMPose-class). It already finds bodies.
 - A general video-understanding model. Fencing phrases are a small, specific label set.
-- Outcome-from-pixels for foil and sabre, until we see that the score box or scoreboard is reliably in frame. Otherwise you keep confirming the touch.
+- A hand-entered action log. The site writes the actions from the video.
 
 ### How training runs
 
-1. You label in the Phase 1 timeline.
-2. Pose features are cached per video.
-3. A small sequence classifier trains on your labels.
-4. The site shows its guess on the next video.
-5. You fix the guess. The fix is a new training row.
-6. Repeat. The stat table always prefers your label over the model's guess.
-
-Labeling tool for the first batches can be the site's own timeline. A separate tool (CVAT or Label Studio) is only worth it if we have to draw blade-tip points by hand.
+1. The public reference bouts are the examples.
+2. The site writes the action and the result for each phrase.
+3. Pose features are cached per video.
+4. A small sequence classifier trains on those written phrases.
+5. The next uploaded bout gets the same kind of written stats: attempts and successes for each action.
 
 ### Blade detection is a separate bet
 
@@ -181,7 +179,7 @@ If body pose cannot tell a parry-riposte from a simple attack, the next model is
 
 ## Reference bouts
 
-These are the public sabre bouts the product is being aimed at. Each one is a real bout with a referee, filmed from the side, with both fencers in frame and a scoreboard that changes when a point is awarded. They cover senior and cadet, and men's and women's sabre. The videos do not come with a written list of our nine action names. The referee's call in the video is the source for that.
+These are the public sabre bouts the product is being aimed at. Each one is a real bout with a referee, filmed from the side, with both fencers in frame and a scoreboard that changes when a point is awarded. They cover senior and cadet, and men's and women's sabre. The videos do not narrate the nine action names. The site writes that list from the fencing.
 
 | Bout | What it is | Link |
 | --- | --- | --- |
@@ -230,7 +228,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video? Answer: read the scoreboard when it shows the point. Otherwise judge from the action whose point it looks like. The site still analyzes videos with no scoreboard.
 8. Do we stat one fencer (the account) or both fencers in the bout? Answer: only the fencer the site asks for.
 9. How much footage do you already have, and is any of it already tagged? Answer: none privately. Use public sabre videos as references. Each bout has a referee. The videos do not include a written list of the nine action names.
-10. Who labels the first 30 bouts? Answer: the referee in the video.
+10. Who labels the first 30 bouts? Answer: the site writes the actions. The uploaded video does not narrate them. The stats are attempts and successes for each action.
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
 12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product.
 13. Do coaches need a login to see a student's video?
