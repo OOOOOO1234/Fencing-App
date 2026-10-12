@@ -21,6 +21,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Timing: after upload, the site finishes watching the bout, then shows all the stats.
 - Scope: each video gets its own stats. Those per-video stats can be combined later.
 - Minors: uploaded videos will include fencers under 18. Each video stays private to the account that uploaded it and to people that account invites.
+- Coaches: a coach can open a fencer's video and stats when that account invites them.
 
 ## What the product is
 
@@ -234,7 +235,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 10. Who labels the first 30 bouts? Answer: the site writes the actions. The uploaded video does not narrate them. The stats are attempts and successes for each action.
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
 12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product. Answer: yes. The site finishes watching the bout, then shows all the stats.
-13. Do coaches need a login to see a student's video?
+13. Do coaches need a login to see a student's video? Answer: yes. A coach can open the video and stats when that account invites them.
 14. Will videos include minors? Answer: yes. Video stays private to the uploader and to people they invite.
 15. Any stack you want (or want to avoid)? Default: a web app you can open in a browser, including a phone browser.
 16. Should version one compare you only to your past bouts? Default: yes. Answer: one video at a time for the stats. Those stats can be combined later.
