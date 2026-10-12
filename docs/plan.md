@@ -17,7 +17,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Whose stats: the site asks which fencer to analyze, and the stats cover only that fencer.
 - Reference footage: there is no private video library. The reference bouts are public sabre broadcasts listed below. The links are the reference. The video files stay on their original sites.
 - Referee: every reference bout has a referee. The scoreboard shows the referee's call for who received the point.
-- Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
+- Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful. The page also lists each exchange: the time, the action, and whether it was successful.
 - Timing: after upload, the site finishes watching the bout, then shows all the stats.
 - Scope: each video gets its own stats. The user picks which videos to add together later. Videos can also be sorted into a playlist for each competition. Opening a competition playlist shows one combined stat table for every video in it. A playlist is always for one fencer.
 - Minors: uploaded videos will include fencers under 18. Each video stays private to the account that uploaded it and to people that account invites.
@@ -211,6 +211,7 @@ After a video is processed:
 
 - Bout header: weapon, date, opponent (optional), final score
 - Action table sorted by attempts, with for / against / net / success rate
+- A list of each exchange: the time, the action, and whether it was successful
 - A strip of the bout you can scrub, with phrases marked
 - Filters: all phrases, your initiative, their initiative, when the score was close
 
