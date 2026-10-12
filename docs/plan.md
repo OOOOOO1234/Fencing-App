@@ -13,7 +13,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - No award: when the referee awards the touch to nobody, including a simultaneous attack, the phrase is neither worked nor failed.
 - Actions for version one: simple attack, attack on the preparation, compound attack, beat attack, counterattack, parry-riposte, remise, point in line, and preparation only.
 - Camera: any setup. Phone beside the strip, a club camera, a tournament stream, or a mix of those can all be uploaded. The first model has to be trained across those setups, so it will need more labeled bouts than a single camera angle would.
-- Who scored: the site reads from the video which fencer received the point. That reading is the count. The uploader does not type in the referee's call.
+- Who scored: the site reads the scoreboard in the video to see which fencer received the point. That reading is the count. The uploader does not type in the referee's call.
 
 ## What the product is
 
@@ -41,7 +41,7 @@ Proposed outcome on each phrase:
 
 "Worked" is **point for**: the referee awarded you the touch. "Didn't work" is **point against**: the referee awarded the touch to your opponent. A phrase can also carry a side remark when that call was wrong. The remark is visible on the phrase and does not move the touch from one column to the other. When the referee awards the touch to nobody, including a simultaneous attack, the phrase is neither worked nor failed.
 
-Foil and sabre need the **awarded** touch, not the light color alone. Right of way can give the point to the fencer whose light came on second, or to the fencer who attacked into the opponent's preparation. Epee can trust the lights, including doubles. The site reads from the video which fencer received the point, and that reading is the count.
+Foil and sabre need the **awarded** touch, not the light color alone. Right of way can give the point to the fencer whose light came on second, or to the fencer who attacked into the opponent's preparation. Epee can trust the lights, including doubles. The site reads the scoreboard in the video to see which fencer received the point, and that reading is the count.
 
 ## Phases
 
@@ -200,7 +200,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 4. Is the outcome definition above right (worked = touch awarded to you, didn't work = touch awarded to them)? How should doubles count? Answer: yes for awarded touches. A wrong referee call stays in the count and gets a side remark. A phrase with no awarded touch, including a simultaneous attack, is neither worked nor failed.
 5. Is the nine-action list the one you want, or do you want named parries and fleche/flunge in version one? Answer: start with the nine actions above.
 6. What camera will the videos come from: phone at the side of the strip, a club camera, a tournament stream, or a mix? Answer: any of those.
-7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video? Answer: the site reads who received the point from the video. Which part of the picture it should read is still open.
+7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video? Answer: the site reads the scoreboard to see who received the point.
 8. Do we stat one fencer (the account) or both fencers in the bout?
 9. How much footage do you already have, and is any of it already tagged?
 10. Who labels the first 30 bouts?
