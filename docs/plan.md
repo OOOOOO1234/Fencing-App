@@ -7,6 +7,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 ## Decisions
 
 - Audience: a service for everyone. Fencers, coaches, and clubs can each have an account. Video stays private to the uploader and to people they invite.
+- Weapon: sabre only. Right of way decides who is awarded the touch. A light on the box is not enough.
 
 ## What the product is
 
@@ -188,7 +189,7 @@ Fencing video often includes minors. Default to private video, visible to the ac
 Answer in any order. Where a default is listed, reply "default" to accept it.
 
 1. Who is this for first: you reviewing your own bouts, a coach reviewing students, or a club? Answer: a service for everyone.
-2. Which weapon is version one: foil, epee, or sabre?
+2. Which weapon is version one: foil, epee, or sabre? Answer: sabre only.
 3. Are the videos bouts, lessons, or both? Default if you only say "bouts": competitive bouts, not lessons.
 4. Is the outcome definition above right (worked = touch awarded to you, didn't work = touch awarded to them)? How should doubles count?
 5. Is the nine-action list the one you want, or do you want named parries and fleche/flunge in version one?
