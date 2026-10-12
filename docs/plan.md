@@ -20,6 +20,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Action log: the site writes down each action. The uploaded video does not narrate what happened. For each action the stats are how many times it was attempted and how many times it was successful.
 - Timing: after upload, the site finishes watching the bout, then shows all the stats.
 - Scope: each video gets its own stats. Those per-video stats can be combined later.
+- Minors: uploaded videos will include fencers under 18. Each video stays private to the account that uploaded it and to people that account invites.
 
 ## What the product is
 
@@ -215,7 +216,7 @@ Comparison to other fencers waits until more than one person has labels. The fir
 
 ## Privacy
 
-Fencing video often includes minors. Default to private video, visible to the account that uploaded it and to a coach they explicitly invite. No public gallery in the first version.
+Uploaded videos will include fencers under 18. Each video is private, visible to the account that uploaded it and to people that account invites. No public gallery in the first version.
 
 ## Open questions
 
@@ -234,6 +235,6 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
 12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product. Answer: yes. The site finishes watching the bout, then shows all the stats.
 13. Do coaches need a login to see a student's video?
-14. Will videos include minors?
+14. Will videos include minors? Answer: yes. Video stays private to the uploader and to people they invite.
 15. Any stack you want (or want to avoid)? Default: a web app you can open in a browser, including a phone browser.
 16. Should version one compare you only to your past bouts? Default: yes. Answer: one video at a time for the stats. Those stats can be combined later.
