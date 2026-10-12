@@ -22,7 +22,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Scope: each video gets its own stats. Those per-video stats can be combined later.
 - Minors: uploaded videos will include fencers under 18. Each video stays private to the account that uploaded it and to people that account invites.
 - Coaches: a coach can open a fencer's video and stats when that account invites them.
-- Wrong call: when the referee's call looks wrong, the site adds the side remark. The awarded result stays in the count.
+- Wrong call: when the referee's call looks wrong, the site adds the side remark. The remark names who the site thinks should have received the point. The awarded result stays in the count.
 
 ## What the product is
 
@@ -48,7 +48,7 @@ Proposed outcome on each phrase:
 | No touch | Halt with no score |
 | Unknown | Not labeled yet |
 
-"Worked" is **point for**: the referee awarded you the touch. "Didn't work" is **point against**: the referee awarded the touch to your opponent. A phrase can also carry a side remark when that call was wrong. The remark is visible on the phrase and does not move the touch from one column to the other. When the referee awards the touch to nobody, including a simultaneous attack, the phrase is neither worked nor failed.
+"Worked" is **point for**: the referee awarded you the touch. "Didn't work" is **point against**: the referee awarded the touch to your opponent. A phrase can also carry a side remark when that call was wrong. The site writes the remark, and the remark names who the site thinks should have received the point. The remark is visible on the phrase and does not move the touch from one column to the other. When the referee awards the touch to nobody, including a simultaneous attack, the phrase is neither worked nor failed.
 
 Foil and sabre need the **awarded** touch, not the light color alone. Right of way can give the point to the fencer whose light came on second, or to the fencer who attacked into the opponent's preparation. Epee can trust the lights, including doubles. When the scoreboard is visible, the site reads it to see which fencer received the point. When the scoreboard does not show who received the point, the site judges from the action whose point it looks like. That result is the count.
 
