@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { computeStats, formatPct, formatTime } from './stats'
+import { computeStats, formatPct, formatTime, scoreStateOf } from './stats'
 import type { Phrase } from '../types'
 
 const phrases: Phrase[] = [
-  { id: '1', timestamp: 10, action: 'Simple attack', outcome: 'point_for' },
-  { id: '2', timestamp: 20, action: 'Simple attack', outcome: 'point_against' },
-  { id: '3', timestamp: 30, action: 'Parry-riposte', outcome: 'point_for' },
+  { id: '1', timestamp: 10, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 0 },
+  { id: '2', timestamp: 20, action: 'Simple attack', outcome: 'point_against', scoreYou: 1, scoreThem: 0 },
+  { id: '3', timestamp: 30, action: 'Parry-riposte', outcome: 'point_for', scoreYou: 1, scoreThem: 1 },
   { id: '4', timestamp: 40, action: 'Counterattack', outcome: 'no_touch' },
-  { id: '5', timestamp: 50, action: 'Simple attack', outcome: 'point_for' },
+  { id: '5', timestamp: 50, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 2 },
 ]
 
 describe('computeStats', () => {
@@ -35,6 +35,14 @@ describe('computeStats', () => {
     expect(stats.totals.successRate).toBeCloseTo(3 / 5)
   })
 
+  it('splits by score state', () => {
+    const stats = computeStats(phrases)
+    expect(stats.byScoreState.tied.attempts).toBe(2)
+    expect(stats.byScoreState.ahead.attempts).toBe(1)
+    expect(stats.byScoreState.behind.attempts).toBe(1)
+    expect(stats.byScoreState.unknown.attempts).toBe(1)
+  })
+
   it('handles empty phrase lists', () => {
     const stats = computeStats([])
     expect(stats.totals.attempts).toBe(0)
@@ -49,5 +57,10 @@ describe('format helpers', () => {
     expect(formatPct(null)).toBe('—')
     expect(formatTime(65)).toBe('1:05')
     expect(formatTime(5)).toBe('0:05')
+  })
+
+  it('derives score state', () => {
+    expect(scoreStateOf({ id: 'x', timestamp: 0, action: 'Simple attack', outcome: 'point_for', scoreYou: 3, scoreThem: 1 })).toBe('ahead')
+    expect(scoreStateOf({ id: 'x', timestamp: 0, action: 'Simple attack', outcome: 'point_for' })).toBe('unknown')
   })
 })

@@ -1,13 +1,23 @@
 import { computeStats, formatPct, statsForDisplay } from '../lib/stats'
-import type { Phrase } from '../types'
+import type { Phrase, ScoreState } from '../types'
 
 interface StatsTableProps {
   phrases: Phrase[]
 }
 
+const SCORE_LABELS: Record<ScoreState, string> = {
+  ahead: 'When ahead',
+  tied: 'When tied',
+  behind: 'When behind',
+  unknown: 'Score unlabeled',
+}
+
 export function StatsTable({ phrases }: StatsTableProps) {
   const stats = computeStats(phrases)
   const rows = statsForDisplay(stats)
+  const situationRows = (['ahead', 'tied', 'behind', 'unknown'] as ScoreState[]).filter(
+    (key) => stats.byScoreState[key].attempts > 0,
+  )
 
   return (
     <section className="stats-panel" aria-labelledby="stats-heading">
@@ -39,6 +49,22 @@ export function StatsTable({ phrases }: StatsTableProps) {
           </strong>
         </div>
       </div>
+
+      {situationRows.length > 0 ? (
+        <div className="situation-strip" aria-label="By score state">
+          {situationRows.map((key) => {
+            const row = stats.byScoreState[key]
+            return (
+              <div key={key}>
+                <span className="stat-label">{SCORE_LABELS[key]}</span>
+                <strong>
+                  {row.attempts} · {formatPct(row.successRate)}
+                </strong>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div className="table-wrap">
         <table className="stats-table">

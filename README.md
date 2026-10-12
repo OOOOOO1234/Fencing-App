@@ -1,8 +1,8 @@
 # Fencing-App
 
-Local sabre bout analytics: upload **one video**, pick **left or right**, tag phrases on the timeline, and get Moneyball-style **attempt / success / fail** rates by action.
+Sabre bout analytics: upload **one video**, pick **left or right**, tag phrases (or run AI when keys exist), and get Moneyball **attempt / success / fail** rates by action — plus situation splits, glossary, playlists, coach share links, and optional cloud sync.
 
-Pose / action AI is **not** included in this MVP. Stats come from your phrase tags (or a clearly labeled demo bout).
+**Live:** https://fencing-app.netlify.app
 
 ## Run locally
 
@@ -11,31 +11,26 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
-
 ```bash
-npm test      # unit tests for stats
-npm run build # production build → dist/
+npm test
+npm run build
 ```
 
-Data stays in this browser (IndexedDB). No accounts or API keys for Phase 1 (see `.env.example`).
+Copy `.env.example` → `.env` when you are ready to paste API keys. See [docs/env.md](docs/env.md).
 
-## Netlify
+## Features
 
-`netlify.toml` builds with `npm run build` and publishes `dist/`, with SPA redirects to `index.html`.
+- Manual phrase tagging (always available) + sabre glossary
+- Edit bout title / side after create
+- Export CSV + copy summary; coach read-only share links
+- Score-state splits (ahead / tied / behind) when scores are tagged
+- Competition playlists (combined stats)
+- Account panel for Supabase auth + push/pull sync (needs keys)
+- Pluggable AI analysis (`VITE_ANALYSIS_API_*`) — honest “needs key” UX when unset
 
-Preferred site name: **fencing-app** → `https://fencing-app.netlify.app`
+## Deferred until you paste keys
 
-## Core loop
+- Real cloud accounts / cross-device sync (Supabase)
+- Live AI draft tags from your analysis endpoint
 
-1. **Upload** one bout video (or load the demo).
-2. Choose whether you are the **left** or **right** fencer.
-3. Seek the video, **tag each phrase** (action + awarded outcome).
-4. Read the **stats table** and exchange log (click a row to seek).
-
-## Deferred
-
-- Automatic pose tracking / action classifier
-- Accounts, coach invites, competition playlists, cloud storage
-
-See product decisions in the planning PR branch `docs/plan.md` if present (`cursor/fencing-analytics-plan-84c1`).
+Pose model weights are not shipped in-repo; use an external analysis API.

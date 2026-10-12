@@ -31,6 +31,10 @@ export const OUTCOME_LABELS: Record<Outcome, string> = {
 
 export type FencerSide = 'left' | 'right'
 
+export type ScoreState = 'ahead' | 'tied' | 'behind' | 'unknown'
+
+export type Initiative = 'you' | 'them' | 'unknown'
+
 export interface Phrase {
   id: string
   /** Seconds into the video (phrase start / seek target). */
@@ -39,6 +43,14 @@ export interface Phrase {
   outcome: Outcome
   /** Optional note when the awarded call looks wrong; does not change counts. */
   remark?: string
+  /** Score for "you" before this phrase (optional situation label). */
+  scoreYou?: number
+  /** Score for opponent before this phrase. */
+  scoreThem?: number
+  /** Who started the phrase / had initiative. */
+  initiative?: Initiative
+  /** True when this phrase was suggested by the analysis provider (not yet confirmed). */
+  fromAnalysis?: boolean
 }
 
 export interface Bout {
@@ -46,10 +58,32 @@ export interface Bout {
   title: string
   side: FencerSide
   createdAt: string
+  updatedAt?: string
   /** True when this bout is sample data for exploring stats without a real upload. */
   isDemo?: boolean
   hasVideo: boolean
   phrases: Phrase[]
+  /** Optional competition / playlist tags (ids). */
+  playlistIds?: string[]
+  /** Cloud sync id when Supabase is configured. */
+  remoteId?: string
+}
+
+export interface Playlist {
+  id: string
+  name: string
+  createdAt: string
+  boutIds: string[]
+}
+
+export interface Invite {
+  id: string
+  boutId: string
+  token: string
+  createdAt: string
+  /** read-only coach share */
+  role: 'coach'
+  label?: string
 }
 
 export interface ActionStats {
@@ -77,4 +111,5 @@ export interface BoutStats {
     costRate: number | null
     net: number
   }
+  byScoreState: Record<ScoreState, BoutStats['totals']>
 }

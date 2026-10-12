@@ -1,9 +1,52 @@
-import type { ActionName, ActionStats, BoutStats, Phrase } from '../types'
+import type {
+  ActionName,
+  ActionStats,
+  BoutStats,
+  Phrase,
+  ScoreState,
+} from '../types'
 import { ACTIONS } from '../types'
 
 function rate(numerator: number, denominator: number): number | null {
   if (denominator === 0) return null
   return numerator / denominator
+}
+
+function emptyTotals(): BoutStats['totals'] {
+  return {
+    attempts: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+    doubles: 0,
+    noTouch: 0,
+    successRate: null,
+    costRate: null,
+    net: 0,
+  }
+}
+
+function finalizeTotals(totals: BoutStats['totals']): BoutStats['totals'] {
+  totals.successRate = rate(totals.pointsFor, totals.attempts)
+  totals.costRate = rate(totals.pointsAgainst, totals.attempts)
+  totals.net = totals.pointsFor - totals.pointsAgainst
+  return totals
+}
+
+function accumulate(phrases: Phrase[]): BoutStats['totals'] {
+  const totals = emptyTotals()
+  totals.attempts = phrases.length
+  totals.pointsFor = phrases.filter((p) => p.outcome === 'point_for').length
+  totals.pointsAgainst = phrases.filter((p) => p.outcome === 'point_against').length
+  totals.doubles = phrases.filter((p) => p.outcome === 'double').length
+  totals.noTouch = phrases.filter((p) => p.outcome === 'no_touch').length
+  return finalizeTotals(totals)
+}
+
+export function scoreStateOf(phrase: Phrase): ScoreState {
+  if (phrase.scoreYou === undefined || phrase.scoreThem === undefined) return 'unknown'
+  if (phrase.scoreYou > phrase.scoreThem) return 'ahead'
+  if (phrase.scoreYou < phrase.scoreThem) return 'behind'
+  return 'tied'
 }
 
 export function computeStats(phrases: Phrase[]): BoutStats {
@@ -35,21 +78,18 @@ export function computeStats(phrases: Phrase[]): BoutStats {
     row.shareOfPoints = rate(row.pointsFor, totalPointsFor)
   }
 
-  const totals = {
-    attempts: phrases.length,
-    pointsFor: totalPointsFor,
-    pointsAgainst: byAction.reduce((sum, row) => sum + row.pointsAgainst, 0),
-    doubles: byAction.reduce((sum, row) => sum + row.doubles, 0),
-    noTouch: byAction.reduce((sum, row) => sum + row.noTouch, 0),
-    successRate: null as number | null,
-    costRate: null as number | null,
-    net: 0,
+  const byScoreState: BoutStats['byScoreState'] = {
+    ahead: accumulate(phrases.filter((p) => scoreStateOf(p) === 'ahead')),
+    tied: accumulate(phrases.filter((p) => scoreStateOf(p) === 'tied')),
+    behind: accumulate(phrases.filter((p) => scoreStateOf(p) === 'behind')),
+    unknown: accumulate(phrases.filter((p) => scoreStateOf(p) === 'unknown')),
   }
-  totals.successRate = rate(totals.pointsFor, totals.attempts)
-  totals.costRate = rate(totals.pointsAgainst, totals.attempts)
-  totals.net = totals.pointsFor - totals.pointsAgainst
 
-  return { byAction, totals }
+  return {
+    byAction,
+    totals: accumulate(phrases),
+    byScoreState,
+  }
 }
 
 export function formatPct(value: number | null): string {
@@ -72,4 +112,17 @@ export function statsForDisplay(stats: BoutStats): ActionStats[] {
 
 export function isActionName(value: string): value is ActionName {
   return (ACTIONS as readonly string[]).includes(value)
+}
+
+export function parseClock(value: string): number {
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+  if (trimmed.includes(':')) {
+    const parts = trimmed.split(':').map((p) => Number(p))
+    if (parts.some((n) => Number.isNaN(n))) return 0
+    if (parts.length === 2) return parts[0]! * 60 + parts[1]!
+    if (parts.length === 3) return parts[0]! * 3600 + parts[1]! * 60 + parts[2]!
+  }
+  const asNumber = Number(trimmed)
+  return Number.isFinite(asNumber) ? asNumber : 0
 }
