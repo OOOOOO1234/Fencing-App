@@ -15,6 +15,7 @@ This is a draft. The open questions at the bottom change the data model, the mod
 - Camera: any setup. Phone beside the strip, a club camera, a tournament stream, or a mix of those can all be uploaded. The first model has to be trained across those setups, so it will need more labeled bouts than a single camera angle would.
 - Who scored: when the scoreboard is visible, the site reads it to see which fencer received the point. When the scoreboard does not show who received the point, the site judges from the action whose point it looks like. That result is the count. The uploader does not type in the referee's call.
 - Whose stats: the site asks which fencer to analyze, and the stats cover only that fencer.
+- Reference footage: there is no private video library. The reference bouts are public sabre broadcasts listed below. The links are the reference. The video files stay on their original sites.
 
 ## What the product is
 
@@ -176,6 +177,30 @@ Labeling tool for the first batches can be the site's own timeline. A separate t
 
 If body pose cannot tell a parry-riposte from a simple attack, the next model is a blade-tip or weapon detector trained on frames you annotate. That is a second dataset (points on frames, not phrase labels). We start that only after Phase 2 shows pose is not enough.
 
+
+## Reference bouts
+
+These are the public sabre bouts the product is being aimed at. Each one is a real bout, filmed from the side, with both fencers in frame and a scoreboard that changes when a point is awarded. They cover senior and cadet, and men's and women's sabre.
+
+| Bout | What it is | Link |
+| --- | --- | --- |
+| Oh Sanguk (KOR) vs Fares Ferjani (TUN), 15–11 | Paris 2024 men's sabre Olympic final | https://www.olympics.com/en/video/oh-kor-and-fares-ferjani-tun-men-s-sabre-individual-gold-medal-bout-fencing-olympic-games-paris-2024 |
+| Same final, NBC broadcast | Scoreboard and elevated side camera | https://www.youtube.com/watch?v=pV8FDG6Ese4 |
+| Leipzig 2017 men's sabre semi-finals and final | FIE broadcast inside the Day 1 finals stream | https://www.youtube.com/watch?v=S-Q8EVxJLVA |
+| Luke Vaid (USA) vs Daniel Lin (USA) | 2024 Pan American Cadet men's sabre gold | https://www.youtube.com/watch?v=tOKJEmZkHiQ |
+| 2025 GB Cup women's sabre final | Women's sabre, tournament camera | https://www.youtube.com/watch?v=nC2Ru01qj-w |
+| Sebastien Patrice (FRA) vs Matyas Szabo (GER) | 2025 Budapest World Cup men's sabre gold | https://www.ganjingworld.com/video/1hhjh1ov7rb22M4oUilMFPArX1d11c |
+| Oh Sanguk vs Shen Chenpeng | 2024 Asian Championships men's sabre final | https://www.ganjingworld.com/video/1hh5a1dti1p4L2pCIqMkdlDAN10l1c |
+
+What these bouts show the system has to handle:
+
+- A scoreboard with both names and a score that ticks up on the awarded touch.
+- Phrases that end in well under a second.
+- Stops for video review, where the picture alone can look like a point before the scoreboard changes.
+- More than one camera style: Olympic overlay, FIE stream, and a cadet-event recording.
+
+Two public research sets are related and are not this reference set. The Fencing Footwork Dataset is practice footwork, not bouts, and it has no scoreboard. The FACTS clips use eight labels (attack, riposte, counterattack, and remise, each for the left and right fencer) and do not cover attack on the preparation, compound attack, beat attack, point in line, or preparation only.
+
 ## Suggested first screen
 
 After a video is processed:
@@ -203,7 +228,7 @@ Answer in any order. Where a default is listed, reply "default" to accept it.
 6. What camera will the videos come from: phone at the side of the strip, a club camera, a tournament stream, or a mix? Answer: any of those.
 7. Is the scoring box or the scoreboard usually visible? For foil and sabre, who confirms right of way: you, a coach, or the video? Answer: read the scoreboard when it shows the point. Otherwise judge from the action whose point it looks like. The site still analyzes videos with no scoreboard.
 8. Do we stat one fencer (the account) or both fencers in the bout? Answer: only the fencer the site asks for.
-9. How much footage do you already have, and is any of it already tagged?
+9. How much footage do you already have, and is any of it already tagged? Answer: none privately. Use public sabre videos as references. They are not already tagged with the nine actions.
 10. Who labels the first 30 bouts?
 11. How wrong can the automatic labels be before they are annoying? Default: the table always shows confirmed labels, and guesses stay in a review queue.
 12. Is upload-and-wait acceptable? Default: yes. Live sideline stats are a later product.
