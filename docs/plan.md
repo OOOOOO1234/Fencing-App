@@ -154,9 +154,9 @@ Each training row:
 - Outcome (point for, point against, double, no touch)
 - Optional: score before the phrase, who started the phrase
 
-A useful coarse classifier usually needs on the order of a few hundred corrected examples of each action you care about, filmed in conditions similar to the videos you will upload later. Named parries, second intention, and messy infighting need more. A consistent side-on camera reduces that number. Mixed phones, streams, and gym angles increase it.
+A useful coarse classifier usually needs on the order of a few hundred examples of each action in the nine-action list, filmed in conditions similar to the videos people will upload later. Named parries, second intention, and messy infighting need more. A consistent side-on camera reduces that number. Mixed phones, streams, and gym angles increase it.
 
-Starter target before we call a model worth turning on: about 30 fully labeled bouts in one weapon, from the camera setup you actually use. If those 30 are short pool bouts, add more until each action in the list has at least a couple hundred examples. We measure that from the labels. We do not guess it is done.
+Starter target before the model is ready: about 30 reference bouts. If those 30 are short pool bouts, add more until each action in the list has at least a couple hundred examples.
 
 ### What we do not train
 
