@@ -4,6 +4,10 @@ A website where a fencer uploads bout video and gets Moneyball-style numbers: ho
 
 This is a draft. The open questions at the bottom change the data model, the model we train, and which accounts you need to open. Nothing here assumes a generic video API already understands fencing. It does not.
 
+## Decisions
+
+- Audience: a service for everyone. Fencers, coaches, and clubs can each have an account. Video stays private to the uploader and to people they invite.
+
 ## What the product is
 
 Moneyball replaced "he looks like a ballplayer" with "this action produces runs." The fencing version replaces "nice bladework" with a count:
@@ -183,7 +187,7 @@ Fencing video often includes minors. Default to private video, visible to the ac
 
 Answer in any order. Where a default is listed, reply "default" to accept it.
 
-1. Who is this for first: you reviewing your own bouts, a coach reviewing students, or a club?
+1. Who is this for first: you reviewing your own bouts, a coach reviewing students, or a club? Answer: a service for everyone.
 2. Which weapon is version one: foil, epee, or sabre?
 3. Are the videos bouts, lessons, or both? Default if you only say "bouts": competitive bouts, not lessons.
 4. Is the outcome definition above right (worked = touch awarded to you, didn't work = touch awarded to them)? How should doubles count?
