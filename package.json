@@ -1,0 +1,23 @@
+{
+  "name": "sabre-stats",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --experimental-strip-types --test tests/stats.test.ts && python3 -m unittest discover -s analyzer -p \"test_*.py\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "typescript": "^5.9.2"
+  }
+}
