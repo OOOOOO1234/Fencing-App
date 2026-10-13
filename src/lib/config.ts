@@ -1,4 +1,4 @@
-/** Runtime feature flags from Vite env. App always works in local/demo mode without keys. */
+/** Client config. Analysis secrets must NEVER be VITE_* — they live on the Netlify Function. */
 
 function read(name: keyof ImportMetaEnv): string {
   const value = import.meta.env[name]
@@ -8,8 +8,8 @@ function read(name: keyof ImportMetaEnv): string {
 export const config = {
   supabaseUrl: read('VITE_SUPABASE_URL'),
   supabaseAnonKey: read('VITE_SUPABASE_ANON_KEY'),
-  analysisApiUrl: read('VITE_ANALYSIS_API_URL'),
-  analysisApiKey: read('VITE_ANALYSIS_API_KEY'),
+  /** Relative Netlify Function — no client API key. */
+  analysisUrl: '/.netlify/functions/analyze',
   appName: 'Fencing-App',
 }
 
@@ -17,13 +17,9 @@ export function hasSupabase(): boolean {
   return Boolean(config.supabaseUrl && config.supabaseAnonKey)
 }
 
-export function hasAnalysisProvider(): boolean {
-  return Boolean(config.analysisApiUrl && config.analysisApiKey)
-}
-
 export function missingEnvMessage(kind: 'supabase' | 'analysis'): string {
   if (kind === 'supabase') {
-    return 'Cloud sync needs VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Local mode still works.'
+    return 'Cloud sync needs VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
   }
-  return 'AI analysis needs VITE_ANALYSIS_API_URL and VITE_ANALYSIS_API_KEY. Manual tagging always works.'
+  return 'Set OPENAI_API_KEY on the Netlify Function (server). Manual tagging still works.'
 }

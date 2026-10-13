@@ -1,11 +1,21 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# SPA fallback — Vite client routing stays on index.html
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+# Optional alias; /.netlify/functions/analyze is served by Netlify before SPA fallback
+[[redirects]]
+  from = "/api/analyze"
+  to = "/.netlify/functions/analyze"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

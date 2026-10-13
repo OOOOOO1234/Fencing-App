@@ -1,7 +1,8 @@
-import { config, hasAnalysisProvider, missingEnvMessage } from '../config'
 import { ACTIONS } from '../../types'
 import type { ActionName, Outcome } from '../../types'
 import type { AnalysisProvider, AnalysisRequest, AnalysisResult } from './types'
+
+const ANALYZE_URL = '/.netlify/functions/analyze'
 
 function isAction(value: unknown): value is ActionName {
   return typeof value === 'string' && (ACTIONS as readonly string[]).includes(value)
@@ -16,46 +17,57 @@ function isOutcome(value: unknown): value is Outcome {
   )
 }
 
-/** Env-wired HTTP provider. Expects JSON { phrases: [{ timestamp, action, outcome, remark?, confidence? }] }. */
-export const httpAnalysisProvider: AnalysisProvider = {
-  id: 'http-env',
-  label: 'External analysis API',
-  isConfigured: hasAnalysisProvider,
+/** Calls the Netlify Function. OpenAI key stays on the server — never in the browser. */
+export const netlifyAnalysisProvider: AnalysisProvider = {
+  id: 'netlify-analyze',
+  label: 'Server analysis',
   async analyze(request: AnalysisRequest): Promise<AnalysisResult> {
-    if (!hasAnalysisProvider()) {
+    if (!request.frames?.length) {
       return {
-        status: 'needs_key',
-        message: missingEnvMessage('analysis'),
+        status: 'error',
+        message: 'No frames to analyze. Load the video first.',
         drafts: [],
       }
     }
 
     try {
-      const response = await fetch(config.analysisApiUrl, {
+      const response = await fetch(ANALYZE_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.analysisApiKey}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          boutId: request.boutId,
           side: request.side,
           title: request.title,
-          videoUrl: request.videoUrl ?? null,
+          duration: request.duration,
+          frames: request.frames,
           weapon: 'sabre',
           actions: ACTIONS,
         }),
       })
 
-      if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as {
+        phrases?: unknown
+        error?: string
+        meta?: { note?: string }
+      }
+
+      if (response.status === 503) {
         return {
-          status: 'error',
-          message: `Analysis API returned ${response.status}`,
+          status: 'needs_key',
+          message:
+            data.error ||
+            'Server analysis key missing. Set OPENAI_API_KEY in Netlify (functions). Manual tagging still works.',
           drafts: [],
         }
       }
 
-      const data = (await response.json()) as { phrases?: unknown }
+      if (!response.ok) {
+        return {
+          status: 'error',
+          message: data.error || `Analysis failed (${response.status})`,
+          drafts: [],
+        }
+      }
+
       const raw = Array.isArray(data.phrases) ? data.phrases : []
       const drafts = raw.flatMap((item) => {
         if (!item || typeof item !== 'object') return []
@@ -74,15 +86,22 @@ export const httpAnalysisProvider: AnalysisProvider = {
         ]
       })
 
+      const note = data.meta?.note ? ` ${data.meta.note}` : ''
       return {
         status: 'ok',
-        message: `Imported ${drafts.length} draft phrase${drafts.length === 1 ? '' : 's'}. Review and edit — AI drafts are not final.`,
+        message:
+          drafts.length > 0
+            ? `Drafted ${drafts.length} phrase${drafts.length === 1 ? '' : 's'} from sampled frames. Review and edit — not final.${note}`
+            : `No phrases drafted from the sampled frames.${note} You can mark phrases manually.`,
         drafts,
       }
     } catch (err) {
       return {
         status: 'error',
-        message: err instanceof Error ? err.message : 'Analysis request failed',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Analysis request failed (is the Netlify function deployed?)',
         drafts: [],
       }
     }
@@ -90,5 +109,5 @@ export const httpAnalysisProvider: AnalysisProvider = {
 }
 
 export function getAnalysisProvider(): AnalysisProvider {
-  return httpAnalysisProvider
+  return netlifyAnalysisProvider
 }

@@ -210,6 +210,41 @@ button {
   display: block;
 }
 
+.analyze-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+}
+
+.analyze {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.analyze:hover:not(:disabled) {
+  background: #083a6b;
+  transform: translateY(-1px);
+}
+
+.analyze:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.status-line {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 .tag {
   border-top: 1px solid var(--line);
   padding-top: 1rem;

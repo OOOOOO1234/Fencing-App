@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { draftsToPhrases } from './lib/analysis/types'
+import { getAnalysisProvider } from './lib/analysis/provider'
+import { captureKeyframes } from './lib/frames'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
 import { newId } from './lib/storage'
 import type { ActionName, FencerSide, Outcome, Phrase } from './types'
@@ -13,6 +16,8 @@ export default function App() {
   const [action, setAction] = useState<ActionName>('Simple attack')
   const [outcome, setOutcome] = useState<Outcome>('point_for')
   const [timeLabel, setTimeLabel] = useState('0:00')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -26,6 +31,7 @@ export default function App() {
     setVideoUrl(URL.createObjectURL(nextFile))
     setPhrases([])
     setTimeLabel('0:00')
+    setStatus(null)
   }
 
   function reset() {
@@ -34,6 +40,7 @@ export default function App() {
     setVideoUrl(null)
     setPhrases([])
     setTimeLabel('0:00')
+    setStatus(null)
   }
 
   function syncTime() {
@@ -64,6 +71,51 @@ export default function App() {
     video.currentTime = seconds
     void video.play()
     setTimeLabel(formatTime(seconds))
+  }
+
+  async function runAnalysis() {
+    const video = videoRef.current
+    if (!video) return
+    setAnalyzing(true)
+    setStatus('Sampling frames…')
+    try {
+      if (video.readyState < 1) {
+        await new Promise<void>((resolve, reject) => {
+          const ok = () => {
+            cleanup()
+            resolve()
+          }
+          const fail = () => {
+            cleanup()
+            reject(new Error('Video failed to load'))
+          }
+          const cleanup = () => {
+            video.removeEventListener('loadedmetadata', ok)
+            video.removeEventListener('error', fail)
+          }
+          video.addEventListener('loadedmetadata', ok, { once: true })
+          video.addEventListener('error', fail, { once: true })
+        })
+      }
+
+      const { frames, duration } = await captureKeyframes(video, { count: 10, maxWidth: 512 })
+      setStatus('Analyzing frames…')
+      const result = await getAnalysisProvider().analyze({
+        side,
+        title: file?.name,
+        duration,
+        frames,
+      })
+      if (result.status === 'ok' && result.drafts.length > 0) {
+        const drafts = draftsToPhrases(result.drafts, newId)
+        setPhrases((prev) => [...prev, ...drafts].sort((a, b) => a.timestamp - b.timestamp))
+      }
+      setStatus(result.message)
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Analysis failed')
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   const stats = computeStats(phrases)
@@ -128,9 +180,7 @@ export default function App() {
           <div className="bout-top">
             <p className="meta">
               <strong>{file?.name}</strong>
-              <span>
-                · {side} fencer
-              </span>
+              <span> · {side} fencer</span>
             </p>
             <button type="button" className="text-btn" onClick={reset}>
               New video
@@ -146,10 +196,27 @@ export default function App() {
             onTimeUpdate={syncTime}
           />
 
-          <form className="tag" onSubmit={addPhrase}>
+          <div className="analyze-row">
+            <button
+              type="button"
+              className="analyze"
+              disabled={analyzing}
+              onClick={() => void runAnalysis()}
+            >
+              {analyzing ? 'Analyzing…' : 'Analyze bout'}
+            </button>
             <p className="tag-hint">
-              Mark each phrase at the playhead — action and whether it scored for you.
+              Samples frames and drafts phrases for Moneyball. Edit or add marks by hand anytime.
             </p>
+          </div>
+          {status ? (
+            <p className="status-line" role="status">
+              {status}
+            </p>
+          ) : null}
+
+          <form className="tag" onSubmit={addPhrase}>
+            <p className="tag-hint">Or mark a phrase at the playhead.</p>
             <div className="tag-grid">
               <label>
                 Time
@@ -236,7 +303,10 @@ export default function App() {
                 <li key={phrase.id}>
                   <button type="button" className="log-main" onClick={() => seekTo(phrase.timestamp)}>
                     <span>{formatTime(phrase.timestamp)}</span>
-                    <span>{phrase.action}</span>
+                    <span>
+                      {phrase.action}
+                      {phrase.fromAnalysis ? ' · draft' : ''}
+                    </span>
                     <span>{OUTCOME_LABELS[phrase.outcome]}</span>
                   </button>
                   <button

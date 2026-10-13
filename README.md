@@ -14,4 +14,4 @@ npm test
 npm run build
 ```
 
-Until an analysis API key is wired, mark phrases inline on the same page (playhead → action → result). Stats update from those marks. Optional env keys are documented in `.env.example` / `docs/env.md` but are not required for the page to work.
+**Analyze bout** samples frames and drafts phrases via `/.netlify/functions/analyze` (OpenAI key stays on the server as `OPENAI_API_KEY`). Manual marks still work. See `docs/env.md`.

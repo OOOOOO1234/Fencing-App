@@ -8,12 +8,17 @@ export interface AnalysisDraftPhrase {
   confidence?: number
 }
 
+export interface AnalysisFrame {
+  timestamp: number
+  dataUrl: string
+}
+
 export interface AnalysisRequest {
-  boutId: string
+  boutId?: string
   side: 'left' | 'right'
-  /** Optional remote video URL once storage is wired; local blob analysis needs a backend. */
-  videoUrl?: string
-  title: string
+  title?: string
+  duration?: number
+  frames: AnalysisFrame[]
 }
 
 export interface AnalysisResult {
@@ -25,7 +30,6 @@ export interface AnalysisResult {
 export interface AnalysisProvider {
   id: string
   label: string
-  isConfigured(): boolean
   analyze(request: AnalysisRequest): Promise<AnalysisResult>
 }
 
@@ -38,7 +42,11 @@ export function draftsToPhrases(
     timestamp: draft.timestamp,
     action: draft.action,
     outcome: draft.outcome,
-    remark: draft.remark ?? (draft.confidence != null ? `AI draft (${Math.round(draft.confidence * 100)}%)` : 'AI draft'),
+    remark:
+      draft.remark ??
+      (draft.confidence != null
+        ? `AI draft (${Math.round(draft.confidence * 100)}%)`
+        : 'AI draft'),
     fromAnalysis: true,
   }))
 }
