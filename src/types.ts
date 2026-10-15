@@ -59,6 +59,11 @@ export interface Bout {
   side: FencerSide
   createdAt: string
   updatedAt?: string
+  /**
+   * Optional calendar date when the bout was filmed (YYYY-MM-DD).
+   * Used for History trends; falls back to createdAt when absent.
+   */
+  recordedAt?: string
   /** True when this bout is sample data for exploring stats without a real upload. */
   isDemo?: boolean
   hasVideo: boolean

@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { HistoryPage } from './HistoryPage'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
 import { captureKeyframes } from './lib/frames'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
-import { newId } from './lib/storage'
-import type { ActionName, FencerSide, Outcome, Phrase } from './types'
+import { newId, saveBout } from './lib/storage'
+import type { ActionName, Bout, FencerSide, Outcome, Phrase } from './types'
 import { ACTIONS, OUTCOME_LABELS, OUTCOMES } from './types'
+
+type Page = 'analyze' | 'history'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [page, setPage] = useState<Page>('analyze')
+  const [boutId, setBoutId] = useState<string | null>(null)
+  const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [side, setSide] = useState<FencerSide>('left')
+  /** Optional filmed date (YYYY-MM-DD). Empty = use upload day in History. */
+  const [recordedAt, setRecordedAt] = useState('')
   const [phrases, setPhrases] = useState<Phrase[]>([])
   const [action, setAction] = useState<ActionName>('Simple attack')
   const [outcome, setOutcome] = useState<Outcome>('point_for')
@@ -25,8 +33,24 @@ export default function App() {
     }
   }, [videoUrl])
 
+  async function persist(nextPhrases: Phrase[], id: string, title: string, filmDate: string, created: string) {
+    const bout: Bout = {
+      id,
+      title,
+      side,
+      createdAt: created,
+      recordedAt: filmDate || undefined,
+      hasVideo: true,
+      phrases: nextPhrases,
+    }
+    await saveBout(bout)
+  }
+
   function startBout(nextFile: File) {
     if (videoUrl) URL.revokeObjectURL(videoUrl)
+    const id = newId()
+    setBoutId(id)
+    setCreatedAt(new Date().toISOString())
     setFile(nextFile)
     setVideoUrl(URL.createObjectURL(nextFile))
     setPhrases([])
@@ -36,6 +60,8 @@ export default function App() {
 
   function reset() {
     if (videoUrl) URL.revokeObjectURL(videoUrl)
+    setBoutId(null)
+    setCreatedAt(null)
     setFile(null)
     setVideoUrl(null)
     setPhrases([])
@@ -48,9 +74,22 @@ export default function App() {
     if (t != null && Number.isFinite(t)) setTimeLabel(formatTime(t))
   }
 
+  async function applyPhrases(next: Phrase[]) {
+    setPhrases(next)
+    if (boutId && file && createdAt) {
+      await persist(
+        next,
+        boutId,
+        file.name.replace(/\.[^.]+$/, '') || file.name,
+        recordedAt,
+        createdAt,
+      )
+    }
+  }
+
   function addPhrase(event: FormEvent) {
     event.preventDefault()
-    if (!videoUrl) return
+    if (!videoUrl || !boutId) return
     const timestamp = videoRef.current?.currentTime ?? parseClock(timeLabel)
     const phrase: Phrase = {
       id: newId(),
@@ -58,11 +97,13 @@ export default function App() {
       action,
       outcome,
     }
-    setPhrases((prev) => [...prev, phrase].sort((a, b) => a.timestamp - b.timestamp))
+    const next = [...phrases, phrase].sort((a, b) => a.timestamp - b.timestamp)
+    void applyPhrases(next)
   }
 
   function removePhrase(id: string) {
-    setPhrases((prev) => prev.filter((p) => p.id !== id))
+    const next = phrases.filter((p) => p.id !== id)
+    void applyPhrases(next)
   }
 
   function seekTo(seconds: number) {
@@ -75,7 +116,7 @@ export default function App() {
 
   async function runAnalysis() {
     const video = videoRef.current
-    if (!video) return
+    if (!video || !boutId) return
     setAnalyzing(true)
     setStatus('Sampling frames…')
     try {
@@ -108,7 +149,8 @@ export default function App() {
       })
       if (result.status === 'ok' && result.drafts.length > 0) {
         const drafts = draftsToPhrases(result.drafts, newId)
-        setPhrases((prev) => [...prev, ...drafts].sort((a, b) => a.timestamp - b.timestamp))
+        const next = [...phrases, ...drafts].sort((a, b) => a.timestamp - b.timestamp)
+        await applyPhrases(next)
       }
       setStatus(result.message)
     } catch (err) {
@@ -128,14 +170,38 @@ export default function App() {
       <div className="atmosphere" aria-hidden />
 
       <header className="masthead">
-        <h1 className="brand">Fencing-App</h1>
-        <p className="lede">
-          Upload one sabre bout. Get Moneyball rates — how often each action is tried, and whether
-          it works.
-        </p>
+        <div className="masthead-row">
+          <h1 className="brand">Fencing-App</h1>
+          <nav className="nav" aria-label="Pages">
+            <button
+              type="button"
+              className={page === 'analyze' ? 'nav-on' : undefined}
+              onClick={() => setPage('analyze')}
+            >
+              Analyze
+            </button>
+            <button
+              type="button"
+              className={page === 'history' ? 'nav-on' : undefined}
+              onClick={() => setPage('history')}
+            >
+              History
+            </button>
+          </nav>
+        </div>
+        {page === 'analyze' ? (
+          <p className="lede">
+            Upload one sabre bout. Get Moneyball rates — how often each action is tried, and whether
+            it works.
+          </p>
+        ) : (
+          <p className="lede">Trends across your saved bouts — usage and success over time.</p>
+        )}
       </header>
 
-      {!active ? (
+      {page === 'history' ? (
+        <HistoryPage onAnalyze={() => setPage('analyze')} />
+      ) : !active ? (
         <section className="upload" aria-labelledby="upload-label">
           <h2 id="upload-label" className="sr-only">
             Upload
@@ -163,6 +229,17 @@ export default function App() {
             </label>
           </fieldset>
 
+          <label className="date-field">
+            <span>
+              When was this filmed? <em>(optional)</em>
+            </span>
+            <input
+              type="date"
+              value={recordedAt}
+              onChange={(e) => setRecordedAt(e.target.value)}
+            />
+          </label>
+
           <label className="file">
             <span>Choose bout video</span>
             <input
@@ -181,6 +258,7 @@ export default function App() {
             <p className="meta">
               <strong>{file?.name}</strong>
               <span> · {side} fencer</span>
+              {recordedAt ? <span> · filmed {recordedAt}</span> : null}
             </p>
             <button type="button" className="text-btn" onClick={reset}>
               New video
