@@ -85,7 +85,9 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
           {
             timestamp,
             action: row.action,
+            opponentAction: isAction(row.opponentAction) ? row.opponentAction : undefined,
             outcome: row.outcome,
+            refSignal: typeof row.refSignal === 'string' ? row.refSignal : undefined,
             remark: typeof row.remark === 'string' ? row.remark : undefined,
             confidence: typeof row.confidence === 'number' ? row.confidence : undefined,
           },
@@ -93,11 +95,13 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
       })
 
       const note = data.meta?.note ? ` ${data.meta.note}` : ''
+      const withOpp = drafts.filter((d) => d.opponentAction).length
+      const withRef = drafts.filter((d) => d.refSignal).length
       return {
         status: 'ok',
         message:
           drafts.length > 0
-            ? `Drafted ${drafts.length} phrase${drafts.length === 1 ? '' : 's'} from sampled frames. Review and edit — not final.${note}`
+            ? `Drafted ${drafts.length} phrase${drafts.length === 1 ? '' : 's'} (${withOpp} with opponent action, ${withRef} with ref signal). Review — sparse frames only.${note}`
             : `No phrases drafted from the sampled frames.${note} You can mark phrases manually.`,
         drafts,
       }

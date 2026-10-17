@@ -2,6 +2,8 @@ import type {
   ActionName,
   ActionStats,
   BoutStats,
+  OpponentActionShare,
+  OpponentSituationStats,
   Phrase,
   ScoreState,
 } from '../types'
@@ -10,6 +12,53 @@ import { ACTIONS } from '../types'
 function rate(numerator: number, denominator: number): number | null {
   if (denominator === 0) return null
   return numerator / denominator
+}
+
+function opponentShares(phrases: Phrase[]): OpponentActionShare[] {
+  const withOpp = phrases.filter((p) => p.opponentAction)
+  const total = withOpp.length
+  return ACTIONS.map((action) => {
+    const count = withOpp.filter((p) => p.opponentAction === action).length
+    return {
+      action,
+      count,
+      share: rate(count, total),
+    }
+  }).filter((row) => row.count > 0)
+}
+
+export function computeOpponentSituation(phrases: Phrase[]): OpponentSituationStats {
+  const whenYouWin = phrases.filter((p) => p.outcome === 'point_for')
+  const whenYouLose = phrases.filter((p) => p.outcome === 'point_against')
+  const decisive = phrases.filter(
+    (p) =>
+      (p.outcome === 'point_for' || p.outcome === 'point_against') && p.opponentAction,
+  )
+
+  const opponentSuccess = ACTIONS.map((action) => {
+    const rows = decisive.filter((p) => p.opponentAction === action)
+    const theirPoints = rows.filter((p) => p.outcome === 'point_against').length
+    const yourPoints = rows.filter((p) => p.outcome === 'point_for').length
+    return {
+      action,
+      attempts: rows.length,
+      theirPoints,
+      yourPoints,
+      theirSuccessRate: rate(theirPoints, rows.length),
+    }
+  }).filter((row) => row.attempts > 0)
+
+  return {
+    whenYouWin: {
+      phrases: whenYouWin.length,
+      byAction: opponentShares(whenYouWin),
+    },
+    whenYouLose: {
+      phrases: whenYouLose.length,
+      byAction: opponentShares(whenYouLose),
+    },
+    opponentSuccess,
+  }
 }
 
 function emptyTotals(): BoutStats['totals'] {
@@ -89,6 +138,7 @@ export function computeStats(phrases: Phrase[]): BoutStats {
     byAction,
     totals: accumulate(phrases),
     byScoreState,
+    opponentSituation: computeOpponentSituation(phrases),
   }
 }
 

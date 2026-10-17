@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { BarChart } from './components/Charts'
 import { HistoryPage } from './HistoryPage'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
@@ -22,6 +23,7 @@ export default function App() {
   const [recordedAt, setRecordedAt] = useState('')
   const [phrases, setPhrases] = useState<Phrase[]>([])
   const [action, setAction] = useState<ActionName>('Simple attack')
+  const [opponentAction, setOpponentAction] = useState<ActionName>('Counterattack')
   const [outcome, setOutcome] = useState<Outcome>('point_for')
   const [timeLabel, setTimeLabel] = useState('0:00')
   const [analyzing, setAnalyzing] = useState(false)
@@ -33,7 +35,13 @@ export default function App() {
     }
   }, [videoUrl])
 
-  async function persist(nextPhrases: Phrase[], id: string, title: string, filmDate: string, created: string) {
+  async function persist(
+    nextPhrases: Phrase[],
+    id: string,
+    title: string,
+    filmDate: string,
+    created: string,
+  ) {
     const bout: Bout = {
       id,
       title,
@@ -95,6 +103,7 @@ export default function App() {
       id: newId(),
       timestamp,
       action,
+      opponentAction,
       outcome,
     }
     const next = [...phrases, phrase].sort((a, b) => a.timestamp - b.timestamp)
@@ -173,7 +182,7 @@ export default function App() {
 
   const stats = computeStats(phrases)
   const usedActions = stats.byAction.filter((row) => row.attempts > 0)
-  const rows = usedActions.length > 0 ? usedActions : stats.byAction
+  const opp = stats.opponentSituation
   const active = Boolean(videoUrl)
 
   return (
@@ -202,11 +211,10 @@ export default function App() {
         </div>
         {page === 'analyze' ? (
           <p className="lede">
-            Upload one sabre bout. Get Moneyball rates — how often each action is tried, and whether
-            it works.
+            Sabre Moneyball — your rates, and what the opponent does when you win or lose the point.
           </p>
         ) : (
-          <p className="lede">Trends across your saved bouts — usage and success over time.</p>
+          <p className="lede">Usage and success trends across saved bouts.</p>
         )}
       </header>
 
@@ -242,7 +250,7 @@ export default function App() {
 
           <label className="date-field">
             <span>
-              When was this filmed? <em>(optional)</em>
+              Filmed <em>(optional)</em>
             </span>
             <input
               type="date"
@@ -268,8 +276,8 @@ export default function App() {
           <div className="bout-top">
             <p className="meta">
               <strong>{file?.name}</strong>
-              <span> · {side} fencer</span>
-              {recordedAt ? <span> · filmed {recordedAt}</span> : null}
+              <span> · {side}</span>
+              {recordedAt ? <span> · {recordedAt}</span> : null}
             </p>
             <button type="button" className="text-btn" onClick={reset}>
               New video
@@ -295,8 +303,8 @@ export default function App() {
               {analyzing ? 'Analyzing…' : 'Analyze bout'}
             </button>
             <p className="tag-hint">
-              Samples a few frames (not the full video) and drafts phrases — usually under 30s. If it
-              fails, mark phrases by hand.
+              Samples frames; reads actions + ref signals when visible. Drafts only — usually under
+              30s.
             </p>
           </div>
           {status ? (
@@ -305,8 +313,90 @@ export default function App() {
             </p>
           ) : null}
 
+          {phrases.length > 0 ? (
+            <section className="moneyball" aria-labelledby="stats-title">
+              <div className="stats-head">
+                <h2 id="stats-title">Moneyball</h2>
+                <p>
+                  {stats.totals.attempts} tries · {formatPct(stats.totals.successRate)} success ·
+                  net{' '}
+                  <span className={stats.totals.net >= 0 ? 'pos' : 'neg'}>
+                    {stats.totals.net > 0 ? `+${stats.totals.net}` : stats.totals.net}
+                  </span>
+                </p>
+              </div>
+
+              <div className="chart-grid">
+                <BarChart
+                  title="Your success rate"
+                  tone="for"
+                  items={usedActions.map((row) => ({
+                    label: row.action,
+                    value: row.successRate,
+                    count: row.attempts,
+                    hint: `${row.pointsFor} for / ${row.pointsAgainst} against`,
+                  }))}
+                  empty="Add phrases to see your rates"
+                />
+                <BarChart
+                  title="Your usage share"
+                  tone="accent"
+                  items={usedActions.map((row) => ({
+                    label: row.action,
+                    value: stats.totals.attempts
+                      ? row.attempts / stats.totals.attempts
+                      : null,
+                    count: row.attempts,
+                  }))}
+                />
+              </div>
+
+              <div className="situation">
+                <h3 className="situation-title">Opponent when you win vs lose</h3>
+                <p className="situation-lede">
+                  What they did in phrases you scored — and phrases they scored. Tag opponent
+                  action (or Analyze) to fill these.
+                </p>
+                <div className="chart-grid">
+                  <BarChart
+                    title={`When you win (${opp.whenYouWin.phrases})`}
+                    tone="for"
+                    items={opp.whenYouWin.byAction.map((row) => ({
+                      label: row.action,
+                      value: row.share,
+                      count: row.count,
+                    }))}
+                    empty="No opponent tags on your scoring phrases yet"
+                  />
+                  <BarChart
+                    title={`When you lose (${opp.whenYouLose.phrases})`}
+                    tone="against"
+                    items={opp.whenYouLose.byAction.map((row) => ({
+                      label: row.action,
+                      value: row.share,
+                      count: row.count,
+                    }))}
+                    empty="No opponent tags on phrases against you yet"
+                  />
+                </div>
+                {opp.opponentSuccess.length > 0 ? (
+                  <BarChart
+                    title="Opponent action — their success (when decisive)"
+                    tone="against"
+                    items={opp.opponentSuccess.map((row) => ({
+                      label: row.action,
+                      value: row.theirSuccessRate,
+                      count: row.attempts,
+                      hint: `${row.theirPoints} their point / ${row.yourPoints} yours`,
+                    }))}
+                  />
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           <form className="tag" onSubmit={addPhrase}>
-            <p className="tag-hint">Or mark a phrase at the playhead.</p>
+            <p className="tag-hint">Mark a phrase at the playhead — you + opponent.</p>
             <div className="tag-grid">
               <label>
                 Time
@@ -318,10 +408,23 @@ export default function App() {
                 />
               </label>
               <label>
-                Action
+                You
                 <select
                   value={action}
                   onChange={(e) => setAction(e.target.value as ActionName)}
+                >
+                  {ACTIONS.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Opponent
+                <select
+                  value={opponentAction}
+                  onChange={(e) => setOpponentAction(e.target.value as ActionName)}
                 >
                   {ACTIONS.map((name) => (
                     <option key={name} value={name}>
@@ -349,44 +452,6 @@ export default function App() {
             </div>
           </form>
 
-          <section className="stats" aria-labelledby="stats-title">
-            <div className="stats-head">
-              <h2 id="stats-title">Moneyball</h2>
-              <p>
-                {stats.totals.attempts} tries · {formatPct(stats.totals.successRate)} success ·{' '}
-                {formatPct(stats.totals.costRate)} cost · net{' '}
-                <span className={stats.totals.net >= 0 ? 'pos' : 'neg'}>
-                  {stats.totals.net > 0 ? `+${stats.totals.net}` : stats.totals.net}
-                </span>
-              </p>
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Action</th>
-                  <th scope="col">Try</th>
-                  <th scope="col">For</th>
-                  <th scope="col">Against</th>
-                  <th scope="col">Success</th>
-                  <th scope="col">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.action} className={row.attempts === 0 ? 'dim' : undefined}>
-                    <th scope="row">{row.action}</th>
-                    <td>{row.attempts}</td>
-                    <td>{row.pointsFor}</td>
-                    <td>{row.pointsAgainst}</td>
-                    <td>{formatPct(row.successRate)}</td>
-                    <td>{formatPct(row.costRate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
           {phrases.length > 0 ? (
             <ul className="log" aria-label="Phrases">
               {phrases.map((phrase) => (
@@ -395,7 +460,9 @@ export default function App() {
                     <span>{formatTime(phrase.timestamp)}</span>
                     <span>
                       {phrase.action}
+                      {phrase.opponentAction ? ` vs ${phrase.opponentAction}` : ''}
                       {phrase.fromAnalysis ? ' · draft' : ''}
+                      {phrase.refSignal ? ` · ${phrase.refSignal}` : ''}
                     </span>
                     <span>{OUTCOME_LABELS[phrase.outcome]}</span>
                   </button>

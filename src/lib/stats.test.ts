@@ -3,11 +3,43 @@ import { computeStats, formatPct, formatTime, scoreStateOf } from './stats'
 import type { Phrase } from '../types'
 
 const phrases: Phrase[] = [
-  { id: '1', timestamp: 10, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 0 },
-  { id: '2', timestamp: 20, action: 'Simple attack', outcome: 'point_against', scoreYou: 1, scoreThem: 0 },
-  { id: '3', timestamp: 30, action: 'Parry-riposte', outcome: 'point_for', scoreYou: 1, scoreThem: 1 },
+  {
+    id: '1',
+    timestamp: 10,
+    action: 'Simple attack',
+    opponentAction: 'Counterattack',
+    outcome: 'point_for',
+    scoreYou: 0,
+    scoreThem: 0,
+  },
+  {
+    id: '2',
+    timestamp: 20,
+    action: 'Simple attack',
+    opponentAction: 'Parry-riposte',
+    outcome: 'point_against',
+    scoreYou: 1,
+    scoreThem: 0,
+  },
+  {
+    id: '3',
+    timestamp: 30,
+    action: 'Parry-riposte',
+    opponentAction: 'Simple attack',
+    outcome: 'point_for',
+    scoreYou: 1,
+    scoreThem: 1,
+  },
   { id: '4', timestamp: 40, action: 'Counterattack', outcome: 'no_touch' },
-  { id: '5', timestamp: 50, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 2 },
+  {
+    id: '5',
+    timestamp: 50,
+    action: 'Simple attack',
+    opponentAction: 'Counterattack',
+    outcome: 'point_for',
+    scoreYou: 0,
+    scoreThem: 2,
+  },
 ]
 
 describe('computeStats', () => {
@@ -48,6 +80,23 @@ describe('computeStats', () => {
     expect(stats.totals.attempts).toBe(0)
     expect(stats.totals.successRate).toBeNull()
     expect(stats.byAction).toHaveLength(9)
+    expect(stats.opponentSituation.whenYouWin.phrases).toBe(0)
+    expect(stats.opponentSituation.opponentSuccess).toHaveLength(0)
+  })
+
+  it('charts opponent actions when you win vs lose', () => {
+    const stats = computeStats(phrases)
+    const { whenYouWin, whenYouLose, opponentSuccess } = stats.opponentSituation
+    expect(whenYouWin.phrases).toBe(3)
+    expect(whenYouLose.phrases).toBe(1)
+    const winCounter = whenYouWin.byAction.find((r) => r.action === 'Counterattack')
+    expect(winCounter?.count).toBe(2)
+    expect(winCounter?.share).toBeCloseTo(2 / 3)
+    const loseParry = whenYouLose.byAction.find((r) => r.action === 'Parry-riposte')
+    expect(loseParry?.count).toBe(1)
+    const oppCounter = opponentSuccess.find((r) => r.action === 'Counterattack')
+    expect(oppCounter).toMatchObject({ attempts: 2, theirPoints: 0, yourPoints: 2 })
+    expect(oppCounter?.theirSuccessRate).toBe(0)
   })
 })
 

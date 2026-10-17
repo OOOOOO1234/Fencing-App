@@ -39,10 +39,21 @@ export interface Phrase {
   id: string
   /** Seconds into the video (phrase start / seek target). */
   timestamp: number
+  /** Your action in the phrase (relative to selected left/right side). */
   action: ActionName
+  /**
+   * Opponent's action in the same phrase (same taxonomy).
+   * Used for "when you win / lose the point, what did they do?" charts.
+   */
+  opponentAction?: ActionName
   outcome: Outcome
   /** Optional note when the awarded call looks wrong; does not change counts. */
   remark?: string
+  /**
+   * What the referee appeared to signal (hand raise / simultaneous / nothing),
+   * when visible in frames. Does not change counts by itself.
+   */
+  refSignal?: string
   /** Score for "you" before this phrase (optional situation label). */
   scoreYou?: number
   /** Score for opponent before this phrase. */
@@ -51,6 +62,37 @@ export interface Phrase {
   initiative?: Initiative
   /** True when this phrase was suggested by the analysis provider (not yet confirmed). */
   fromAnalysis?: boolean
+}
+
+/** Opponent action usage inside a win/lose bucket. */
+export interface OpponentActionShare {
+  action: ActionName
+  count: number
+  /** Share of phrases in this situation bucket. */
+  share: number | null
+}
+
+/** When you win vs lose the point — what the opponent did. */
+export interface OpponentSituationStats {
+  whenYouWin: {
+    phrases: number
+    byAction: OpponentActionShare[]
+  }
+  whenYouLose: {
+    phrases: number
+    byAction: OpponentActionShare[]
+  }
+  /**
+   * Across decisive phrases (for/against), how often each opponent action
+   * succeeded for them (your point_against) vs failed (your point_for).
+   */
+  opponentSuccess: Array<{
+    action: ActionName
+    attempts: number
+    theirPoints: number
+    yourPoints: number
+    theirSuccessRate: number | null
+  }>
 }
 
 export interface Bout {
@@ -117,4 +159,5 @@ export interface BoutStats {
     net: number
   }
   byScoreState: Record<ScoreState, BoutStats['totals']>
+  opponentSituation: OpponentSituationStats
 }
