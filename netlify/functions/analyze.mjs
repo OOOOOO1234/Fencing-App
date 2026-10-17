@@ -116,8 +116,8 @@ export async function handler(event) {
     })
   }
 
-  if (frames.length > 16) {
-    return json(400, { error: 'Too many frames (max 16).', phrases: [] })
+  if (frames.length > 8) {
+    return json(400, { error: 'Too many frames (max 8).', phrases: [] })
   }
 
   const content = [
@@ -159,7 +159,8 @@ export async function handler(event) {
     return json(400, { error: 'No valid frame images in request.', phrases: [] })
   }
 
-  const model = process.env.OPENAI_ANALYSIS_MODEL?.trim() || 'gpt-4o'
+  const model = process.env.OPENAI_ANALYSIS_MODEL?.trim() || 'gpt-4o-mini'
+  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 20_000
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -168,15 +169,17 @@ export async function handler(event) {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(openaiTimeoutMs),
       body: JSON.stringify({
         model,
         temperature: 0.2,
+        max_tokens: 1200,
         response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
             content:
-              'You label sabre fencing phrases from frames. Reply with JSON only matching the schema.',
+              'You label sabre fencing phrases from frames. Reply with JSON only matching the schema. Be brief.',
           },
           { role: 'user', content },
         ],
@@ -212,6 +215,13 @@ export async function handler(event) {
       },
     })
   } catch (err) {
+    const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : ''
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      return json(504, {
+        error: `OpenAI timed out after ${Math.round(openaiTimeoutMs / 1000)}s. Try again or mark phrases manually.`,
+        phrases: [],
+      })
+    }
     return json(500, {
       error: err instanceof Error ? err.message : 'Analysis failed',
       phrases: [],

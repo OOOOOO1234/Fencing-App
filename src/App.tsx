@@ -118,10 +118,14 @@ export default function App() {
     const video = videoRef.current
     if (!video || !boutId) return
     setAnalyzing(true)
-    setStatus('Sampling frames…')
+    setStatus('Preparing video…')
     try {
       if (video.readyState < 1) {
         await new Promise<void>((resolve, reject) => {
+          const timer = window.setTimeout(() => {
+            cleanup()
+            reject(new Error('Video metadata timed out — wait for the player to load, then retry.'))
+          }, 8000)
           const ok = () => {
             cleanup()
             resolve()
@@ -131,6 +135,7 @@ export default function App() {
             reject(new Error('Video failed to load'))
           }
           const cleanup = () => {
+            window.clearTimeout(timer)
             video.removeEventListener('loadedmetadata', ok)
             video.removeEventListener('error', fail)
           }
@@ -139,8 +144,14 @@ export default function App() {
         })
       }
 
-      const { frames, duration } = await captureKeyframes(video, { count: 10, maxWidth: 512 })
-      setStatus('Analyzing frames…')
+      setStatus('Sampling frames (0/6)…')
+      const { frames, duration } = await captureKeyframes(video, {
+        count: 6,
+        maxWidth: 384,
+        quality: 0.55,
+        onProgress: (done, total) => setStatus(`Sampling frames (${done}/${total})…`),
+      })
+      setStatus('Calling analysis (usually under 30s)…')
       const result = await getAnalysisProvider().analyze({
         side,
         title: file?.name,
@@ -284,7 +295,8 @@ export default function App() {
               {analyzing ? 'Analyzing…' : 'Analyze bout'}
             </button>
             <p className="tag-hint">
-              Samples frames and drafts phrases for Moneyball. Edit or add marks by hand anytime.
+              Samples a few frames (not the full video) and drafts phrases — usually under 30s. If it
+              fails, mark phrases by hand.
             </p>
           </div>
           {status ? (

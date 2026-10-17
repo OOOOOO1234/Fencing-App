@@ -5,35 +5,60 @@ export interface VideoFrame {
   dataUrl: string
 }
 
-function waitForSeek(video: HTMLVideoElement): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const onSeeked = () => {
+const SEEK_TIMEOUT_MS = 2500
+
+function waitForSeek(video: HTMLVideoElement, target: number): Promise<void> {
+  return new Promise((resolve) => {
+    // Some browsers never fire `seeked` if already at the target (or very close).
+    if (Math.abs(video.currentTime - target) < 0.08 && video.readyState >= 2) {
+      resolve()
+      return
+    }
+
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
       cleanup()
       resolve()
     }
-    const onError = () => {
-      cleanup()
-      reject(new Error('Could not seek video for frame capture'))
-    }
+
+    const onSeeked = () => finish()
+    const onError = () => finish()
+    const timer = window.setTimeout(finish, SEEK_TIMEOUT_MS)
+
     const cleanup = () => {
+      window.clearTimeout(timer)
       video.removeEventListener('seeked', onSeeked)
       video.removeEventListener('error', onError)
     }
-    video.addEventListener('seeked', onSeeked, { once: true })
-    video.addEventListener('error', onError, { once: true })
+
+    video.addEventListener('seeked', onSeeked)
+    video.addEventListener('error', onError)
+    try {
+      video.currentTime = Math.max(0, target)
+    } catch {
+      finish()
+    }
   })
 }
 
 /**
- * Capture evenly spaced frames. Keeps payload small for Netlify function + OpenAI limits.
- * Honest constraint: sparse stills, not continuous video understanding.
+ * Capture evenly spaced frames. Keeps payload small for Netlify (~10–26s) + OpenAI.
+ * Seeks always time out so Analyze never hangs forever on stubborn codecs.
  */
 export async function captureKeyframes(
   video: HTMLVideoElement,
-  options?: { count?: number; maxWidth?: number },
+  options?: {
+    count?: number
+    maxWidth?: number
+    quality?: number
+    onProgress?: (done: number, total: number) => void
+  },
 ): Promise<{ frames: VideoFrame[]; duration: number }> {
-  const count = options?.count ?? 10
-  const maxWidth = options?.maxWidth ?? 512
+  const count = options?.count ?? 6
+  const maxWidth = options?.maxWidth ?? 384
+  const quality = options?.quality ?? 0.55
   const duration = Number.isFinite(video.duration) ? video.duration : 0
 
   if (!duration || duration <= 0) {
@@ -54,19 +79,29 @@ export async function captureKeyframes(
   try {
     for (let i = 0; i < count; i += 1) {
       const timestamp = Math.min(duration - 0.05, step * i + step / 2)
-      video.currentTime = Math.max(0, timestamp)
-      await waitForSeek(video)
+      await waitForSeek(video, Math.max(0, timestamp))
 
-      const scale = Math.min(1, maxWidth / video.videoWidth || 1)
-      canvas.width = Math.max(1, Math.round((video.videoWidth || maxWidth) * scale))
-      canvas.height = Math.max(1, Math.round((video.videoHeight || maxWidth) * scale))
+      const vw = video.videoWidth || maxWidth
+      const vh = video.videoHeight || Math.round(maxWidth * 0.56)
+      const scale = Math.min(1, maxWidth / vw)
+      canvas.width = Math.max(1, Math.round(vw * scale))
+      canvas.height = Math.max(1, Math.round(vh * scale))
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.72)
-      frames.push({ timestamp, dataUrl })
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      frames.push({ timestamp: video.currentTime || timestamp, dataUrl })
+      options?.onProgress?.(i + 1, count)
     }
   } finally {
-    video.currentTime = previousTime
-    if (!wasPaused) void video.play()
+    try {
+      video.currentTime = previousTime
+    } catch {
+      /* ignore */
+    }
+    if (!wasPaused) void video.play().catch(() => undefined)
+  }
+
+  if (frames.length === 0) {
+    throw new Error('Could not capture any frames from this video.')
   }
 
   return { frames, duration }

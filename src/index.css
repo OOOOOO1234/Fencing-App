@@ -458,9 +458,12 @@ button {
 
 .status-line {
   margin: 0;
-  color: var(--muted);
+  color: var(--ink);
   font-weight: 600;
   font-size: 0.95rem;
+  border-left: 3px solid var(--accent);
+  padding: 0.45rem 0 0.45rem 0.75rem;
+  background: rgba(10, 77, 140, 0.06);
 }
 
 .tag {

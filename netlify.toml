@@ -10,6 +10,10 @@
   node_bundler = "esbuild"
   directory = "netlify/functions"
 
+[functions.analyze]
+  # Max available on most plans; client aborts at 45s with a clear error.
+  timeout = 26
+
 # Optional alias; /.netlify/functions/analyze is served by Netlify before SPA fallback
 [[redirects]]
   from = "/api/analyze"

@@ -3,6 +3,8 @@ import type { ActionName, Outcome } from '../../types'
 import type { AnalysisProvider, AnalysisRequest, AnalysisResult } from './types'
 
 const ANALYZE_URL = '/.netlify/functions/analyze'
+/** Client abort well under a silent 10-minute wait; Netlify sync functions are ~10–26s. */
+const CLIENT_TIMEOUT_MS = 45_000
 
 function isAction(value: unknown): value is ActionName {
   return typeof value === 'string' && (ACTIONS as readonly string[]).includes(value)
@@ -30,10 +32,14 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
       }
     }
 
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS)
+
     try {
       const response = await fetch(ANALYZE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           side: request.side,
           title: request.title,
@@ -96,6 +102,14 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
         drafts,
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return {
+          status: 'error',
+          message:
+            'Analyze timed out after 45s. Try a shorter clip, or mark phrases manually. (Netlify + OpenAI need a quick round-trip.)',
+          drafts: [],
+        }
+      }
       return {
         status: 'error',
         message:
@@ -104,6 +118,8 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
             : 'Analysis request failed (is the Netlify function deployed?)',
         drafts: [],
       }
+    } finally {
+      window.clearTimeout(timer)
     }
   },
 }
