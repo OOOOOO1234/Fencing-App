@@ -1,17 +1,5 @@
-/** Sabre action dictionary (Phase 0 / Phase 1). */
-export const ACTIONS = [
-  'Simple attack',
-  'Attack on the preparation',
-  'Compound attack',
-  'Beat attack',
-  'Counterattack',
-  'Parry-riposte',
-  'Remise',
-  'Point in line',
-  'Preparation only',
-] as const
-
-export type ActionName = (typeof ACTIONS)[number]
+export { ACTIONS, type ActionName, isActionName, coerceActionName, ACTION_BLURBS } from './lib/actions'
+import type { ActionName } from './lib/actions'
 
 export const OUTCOMES = [
   'point_for',

@@ -1,4 +1,5 @@
 import type { ActionName, Outcome, Phrase } from '../../types'
+import type { AudioCue } from '../audio'
 
 export interface AnalysisDraftPhrase {
   timestamp: number
@@ -23,6 +24,8 @@ export interface AnalysisRequest {
   title?: string
   duration?: number
   frames: AnalysisFrame[]
+  /** Loudness peaks — likely Halt / call moments. */
+  audioCues?: AudioCue[]
 }
 
 export interface AnalysisResult {

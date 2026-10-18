@@ -1,5 +1,4 @@
 import type {
-  ActionName,
   ActionStats,
   BoutStats,
   OpponentActionShare,
@@ -7,7 +6,7 @@ import type {
   Phrase,
   ScoreState,
 } from '../types'
-import { ACTIONS } from '../types'
+import { ACTIONS } from './actions'
 
 function rate(numerator: number, denominator: number): number | null {
   if (denominator === 0) return null
@@ -160,9 +159,7 @@ export function statsForDisplay(stats: BoutStats): ActionStats[] {
   return used.length > 0 ? used : stats.byAction
 }
 
-export function isActionName(value: string): value is ActionName {
-  return (ACTIONS as readonly string[]).includes(value)
-}
+export { isActionName } from './actions'
 
 export function parseClock(value: string): number {
   const trimmed = value.trim()

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BarChart } from './components/Charts'
+import { PhraseRow } from './components/PhraseEdit'
 import { HistoryPage } from './HistoryPage'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
+import { ACTIONS, type ActionName } from './lib/actions'
+import { extractAudioCues } from './lib/audio'
 import { captureKeyframes } from './lib/frames'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
 import { newId, saveBout } from './lib/storage'
-import type { ActionName, Bout, FencerSide, Outcome, Phrase } from './types'
-import { ACTIONS, OUTCOME_LABELS, OUTCOMES } from './types'
+import type { Bout, FencerSide, Outcome, Phrase } from './types'
+import { OUTCOME_LABELS, OUTCOMES } from './types'
 
 type Page = 'analyze' | 'history'
 
@@ -110,6 +113,13 @@ export default function App() {
     void applyPhrases(next)
   }
 
+  function updatePhrase(nextPhrase: Phrase) {
+    const next = phrases
+      .map((p) => (p.id === nextPhrase.id ? nextPhrase : p))
+      .sort((a, b) => a.timestamp - b.timestamp)
+    void applyPhrases(next)
+  }
+
   function removePhrase(id: string) {
     const next = phrases.filter((p) => p.id !== id)
     void applyPhrases(next)
@@ -153,6 +163,9 @@ export default function App() {
         })
       }
 
+      setStatus('Reading audio peaks…')
+      const audioCues = file ? await extractAudioCues(file, { maxPeaks: 8 }) : []
+
       setStatus('Sampling frames (0/6)…')
       const { frames, duration } = await captureKeyframes(video, {
         count: 6,
@@ -160,12 +173,17 @@ export default function App() {
         quality: 0.55,
         onProgress: (done, total) => setStatus(`Sampling frames (${done}/${total})…`),
       })
-      setStatus('Calling analysis (usually under 30s)…')
+      setStatus(
+        audioCues.length
+          ? `Calling analysis (${audioCues.length} audio peaks + frames)…`
+          : 'Calling analysis (frames; no audio peaks)…',
+      )
       const result = await getAnalysisProvider().analyze({
         side,
         title: file?.name,
         duration,
         frames,
+        audioCues,
       })
       if (result.status === 'ok' && result.drafts.length > 0) {
         const drafts = draftsToPhrases(result.drafts, newId)
@@ -303,8 +321,8 @@ export default function App() {
               {analyzing ? 'Analyzing…' : 'Analyze bout'}
             </button>
             <p className="tag-hint">
-              Samples frames; reads actions + ref signals when visible. Drafts only — usually under
-              30s.
+              Uses ref gestures, audio peaks, and your left/right. Drafts — Edit if the call is
+              wrong.
             </p>
           </div>
           {status ? (
@@ -354,8 +372,7 @@ export default function App() {
               <div className="situation">
                 <h3 className="situation-title">Opponent when you win vs lose</h3>
                 <p className="situation-lede">
-                  What they did in phrases you scored — and phrases they scored. Tag opponent
-                  action (or Analyze) to fill these.
+                  What they did in phrases you scored — and phrases they scored.
                 </p>
                 <div className="chart-grid">
                   <BarChart
@@ -455,25 +472,13 @@ export default function App() {
           {phrases.length > 0 ? (
             <ul className="log" aria-label="Phrases">
               {phrases.map((phrase) => (
-                <li key={phrase.id}>
-                  <button type="button" className="log-main" onClick={() => seekTo(phrase.timestamp)}>
-                    <span>{formatTime(phrase.timestamp)}</span>
-                    <span>
-                      {phrase.action}
-                      {phrase.opponentAction ? ` vs ${phrase.opponentAction}` : ''}
-                      {phrase.fromAnalysis ? ' · draft' : ''}
-                      {phrase.refSignal ? ` · ${phrase.refSignal}` : ''}
-                    </span>
-                    <span>{OUTCOME_LABELS[phrase.outcome]}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="text-btn"
-                    onClick={() => removePhrase(phrase.id)}
-                  >
-                    Remove
-                  </button>
-                </li>
+                <PhraseRow
+                  key={phrase.id}
+                  phrase={phrase}
+                  onSeek={seekTo}
+                  onSave={updatePhrase}
+                  onRemove={() => removePhrase(phrase.id)}
+                />
               ))}
             </ul>
           ) : null}

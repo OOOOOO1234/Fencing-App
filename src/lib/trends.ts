@@ -1,6 +1,6 @@
 import { computeStats } from './stats'
-import type { ActionName, Bout } from '../types'
-import { ACTIONS } from '../types'
+import type { Bout } from '../types'
+import { ACTIONS, type ActionName } from './actions'
 
 /** Effective date for trend x-axis: filmed date if set, else created day. */
 export function boutTrendDate(bout: Bout): string {

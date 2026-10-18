@@ -1,22 +1,32 @@
 /**
  * Server-side sabre phrase draft analysis.
- * Reads OPENAI_API_KEY (preferred), ANALYSIS_API_KEY, or VITE_ANALYSIS_API_KEY (transition only).
- * Never expose the key to the browser.
+ * Three signals (priority order):
+ *   1) Referee hand gestures / award  → ground truth for outcome
+ *   2) Audio loudness peaks           → likely Halt / call moments
+ *   3) User side (left/right)         → who is "you" vs opponent
+ * Body mechanics from frames are secondary — never override a clear ref award.
  *
- * Grounded in FIE sabre ROW (t.100–106) and official referee hand signals.
- * Sparse keyframes only — honest about limits.
+ * Not a trained sabre classifier — prompt + vision model on sparse frames + cues.
  */
 
 const ACTIONS = [
   'Simple attack',
-  'Attack on the preparation',
   'Compound attack',
+  'Attack on the preparation',
   'Beat attack',
+  'Prise de fer',
   'Counterattack',
+  'Counter-time',
+  'Parry',
+  'Riposte',
   'Parry-riposte',
+  'Counter-riposte',
   'Remise',
+  'Redoublement',
+  'Reprise',
   'Point in line',
   'Preparation only',
+  'No action',
 ]
 
 const OUTCOMES = ['point_for', 'point_against', 'double', 'no_touch']
@@ -68,7 +78,7 @@ function parsePhrases(raw) {
         remark:
           typeof item.remark === 'string'
             ? item.remark
-            : 'AI draft from sampled frames — verify against full phrase',
+            : 'AI draft — verify against ref call',
         confidence: typeof item.confidence === 'number' ? item.confidence : undefined,
       },
     ]
@@ -89,38 +99,61 @@ function extractJsonObject(text) {
   }
 }
 
+function formatAudioCues(cues) {
+  if (!Array.isArray(cues) || cues.length === 0) {
+    return 'No audio loudness peaks available (silent file or decode failed). Do not invent calls from silence.'
+  }
+  const lines = cues.slice(0, 12).map((c) => {
+    const t = Number(c.timestamp)
+    const loud = Number(c.loudness)
+    if (!Number.isFinite(t)) return null
+    const loudStr = Number.isFinite(loud) ? loud.toFixed(2) : '?'
+    return `- t=${t.toFixed(2)}s loudness=${loudStr}`
+  })
+  return [
+    'Audio loudness peaks (likely Halt / Touché / Attack / verbal calls — not speech transcription):',
+    ...lines.filter(Boolean),
+    'Prefer placing phrase timestamps near these peaks when frames also support a halt/award.',
+  ].join('\n')
+}
+
 const SYSTEM_PROMPT = [
-  'You are a sabre fencing analyst labeling phrases from sparse still frames (not full video).',
-  'Follow FIE sabre right-of-way (Technical Rules t.100–106): attack needs continuous threat;',
-  'parry gives immediate riposte right; stop-hit must be in time before final movement;',
-  'simultaneous conception → annul; point-in-line must be deflected properly (mere contact ≠ deflection).',
-  'Prefer visible referee signals and scoreboard over guessing priority from blurry bodies:',
-  '- Hand raised high on one side after Halt → award to that side.',
-  '- Simultaneous / nothing / incorrect gestures → map carefully (simultaneous often → no_touch).',
-  '- Scoring-box lights show contact; foil/sabre still need ROW — lights alone are not the award.',
-  'For each phrase report BOTH fencers: action (analyzed side) and opponentAction (other side), same taxonomy.',
-  'Be conservative. Omit phrases you cannot support. Reply with JSON only.',
+  'You are a sabre fencing analyst. You are NOT a trained pose classifier — reason from three signals in this priority:',
+  '1) REFEREE (ground truth for what happened): hand raise on awarded side, simultaneous, nothing, incorrect/too-short, scoreboard digit change after Halt.',
+  '2) AUDIO CUES: loudness peaks often mark Halt / Touché / Attack calls — align phrase times to peaks when consistent with frames.',
+  '3) USER SIDE: the analyzed fencer is explicitly left or right on screen — never swap "you" and opponent.',
+  'Then, and only then, infer actions from body/blade using FIE sabre ROW (t.100–106).',
+  'Outcome must follow the referee award relative to the user side. Do not award from lights alone.',
+  'Use exact action taxonomy strings. Be conservative. JSON only.',
 ].join(' ')
 
-function buildUserPrompt(side, duration, actions) {
+function buildUserPrompt(side, duration, actions, audioBlock) {
+  const oppSide = side === 'left' ? 'right' : 'left'
   return [
-    `The fencer to analyze ("you") is on the ${side} side of the screen.`,
-    `Video duration is about ${duration || 'unknown'} seconds.`,
-    'Each image has a timestamp in seconds in its caption. Frames are sparse samples — not a continuous phrase film.',
-    'Infer discrete phrases (exchanges). For EACH phrase determine:',
-    '(1) action — what YOU did (exact taxonomy string)',
-    '(2) opponentAction — what the OTHER fencer did (exact taxonomy string, when visible)',
-    '(3) outcome — from YOUR perspective, using referee award when visible',
-    '(4) refSignal — short note of what you saw (e.g. "ref hand up on left", "simultaneous signal", "scoreboard 3-2", "lights both; no clear ref")',
-    `Allowed actions (exact strings): ${actions.join(' | ')}`,
-    `Allowed outcomes (exact strings): ${OUTCOMES.join(' | ')}`,
-    'point_for = touch awarded to analyzed fencer; point_against = awarded to opponent;',
-    'double = both awarded (rare in sabre); no_touch = halt with no score / annulled simultaneous.',
-    'Sabre notes: no flèche; hesitation/bent arm often loses attack; remises lose to immediate riposte.',
-    'Timestamps must be within [0, duration] when duration > 0.',
+    `USER IDENTITY: "you" = fencer on the ${side} side of the screen. Opponent = ${oppSide} side. Never reverse this.`,
+    `Video duration ≈ ${duration || 'unknown'} seconds.`,
+    '',
+    'DECISION ORDER (required):',
+    'A) From frames: find referee after Halt — which side gets the hand raise / simultaneous / nothing?',
+    `   Map award: hand on ${side} → point_for; hand on ${oppSide} → point_against; simultaneous/nothing → no_touch (prefer).`,
+    'B) Use audio peaks as candidate phrase times (Halt/call moments).',
+    'C) Label YOUR action and opponentAction with the taxonomy — consistent with the awarded call and ROW,',
+    '   not a vague guess from a single blurry pose.',
+    '',
+    audioBlock,
+    '',
+    'For EACH phrase return:',
+    '(1) timestamp — prefer near an audio peak and/or ref signal frame',
+    '(2) action — YOUR action (exact string)',
+    '(3) opponentAction — OTHER fencer (exact string when known)',
+    '(4) outcome — from YOUR perspective, driven by referee award',
+    '(5) refSignal — short: e.g. "hand up left", "simultaneous", "nothing", "no ref visible"',
+    `Allowed actions: ${actions.join(' | ')}`,
+    `Allowed outcomes: ${OUTCOMES.join(' | ')}`,
+    'Sabre: no flèche label; remises lose to immediate riposte; stop-hit must be in time (Counterattack).',
+    'Timestamps in [0, duration] when duration > 0.',
     'Return ONLY JSON:',
     '{"phrases":[{"timestamp":number,"action":string,"opponentAction":string,"outcome":string,"refSignal":string,"confidence":number,"remark":string}]}',
-    'opponentAction and refSignal may be omitted if not visible. confidence 0-1. No markdown.',
   ].join('\n')
 }
 
@@ -151,6 +184,7 @@ export async function handler(event) {
 
   const side = payload.side === 'right' ? 'right' : 'left'
   const frames = Array.isArray(payload.frames) ? payload.frames : []
+  const audioCues = Array.isArray(payload.audioCues) ? payload.audioCues : []
   const duration = Number(payload.duration) || 0
   const actions = Array.isArray(payload.actions) ? payload.actions : ACTIONS
 
@@ -165,10 +199,11 @@ export async function handler(event) {
     return json(400, { error: 'Too many frames (max 8).', phrases: [] })
   }
 
+  const audioBlock = formatAudioCues(audioCues)
   const content = [
     {
       type: 'text',
-      text: buildUserPrompt(side, duration, actions),
+      text: buildUserPrompt(side, duration, actions, audioBlock),
     },
   ]
 
@@ -178,7 +213,7 @@ export async function handler(event) {
     if (!dataUrl.startsWith('data:image/') || !Number.isFinite(timestamp)) continue
     content.push({
       type: 'text',
-      text: `Frame at t=${timestamp.toFixed(2)}s — look for fencers, referee hands/signals, lights, scoreboard.`,
+      text: `Frame at t=${timestamp.toFixed(2)}s — prioritize referee hands/signals, then scoreboard/lights, then fencers (${side}=you).`,
     })
     content.push({
       type: 'image_url',
@@ -191,7 +226,7 @@ export async function handler(event) {
   }
 
   const model = process.env.OPENAI_ANALYSIS_MODEL?.trim() || 'gpt-4o-mini'
-  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 20_000
+  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 22_000
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -203,8 +238,8 @@ export async function handler(event) {
       signal: AbortSignal.timeout(openaiTimeoutMs),
       body: JSON.stringify({
         model,
-        temperature: 0.2,
-        max_tokens: 1600,
+        temperature: 0.15,
+        max_tokens: 1800,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -238,8 +273,9 @@ export async function handler(event) {
       meta: {
         model,
         frameCount: frames.length,
+        audioCueCount: audioCues.length,
         note:
-          'Drafts from sampled frames only. Prefer visible ref hand signals and scoreboard when present; ROW from stills is uncertain — review before trusting rates.',
+          'Drafts use ref gestures (ground truth for award) + audio peaks + your left/right side. Not a trained sabre classifier — review and Edit.',
       },
     })
   } catch (err) {

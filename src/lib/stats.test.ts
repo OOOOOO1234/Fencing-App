@@ -79,7 +79,7 @@ describe('computeStats', () => {
     const stats = computeStats([])
     expect(stats.totals.attempts).toBe(0)
     expect(stats.totals.successRate).toBeNull()
-    expect(stats.byAction).toHaveLength(9)
+    expect(stats.byAction).toHaveLength(17)
     expect(stats.opponentSituation.whenYouWin.phrases).toBe(0)
     expect(stats.opponentSituation.opponentSuccess).toHaveLength(0)
   })
