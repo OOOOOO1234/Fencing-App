@@ -685,6 +685,38 @@ button {
   font-weight: 600 !important;
 }
 
+.ref-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  border-bottom: 1px solid rgba(11, 79, 140, 0.35);
+  padding: 0.1rem 0;
+  max-width: 11rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-ref-input {
+  grid-column: 1 / -1;
+}
+
+.log-ref-input input {
+  width: 100%;
+  border: none;
+  border-bottom: 2px solid var(--line);
+  background: transparent;
+  padding: 0.35rem 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.log-ref-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

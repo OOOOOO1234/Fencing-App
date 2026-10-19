@@ -1,12 +1,7 @@
 /**
- * Server-side sabre phrase draft analysis.
- * Three signals (priority order):
- *   1) Referee hand gestures / award  → ground truth for outcome
- *   2) Audio loudness peaks           → likely Halt / call moments
- *   3) User side (left/right)         → who is "you" vs opponent
- * Body mechanics from frames are secondary — never override a clear ref award.
- *
- * Not a trained sabre classifier — prompt + vision model on sparse frames + cues.
+ * Sabre Analyze — speech (Whisper) + denser frames + FIE-oriented prompt.
+ * Priority: hands (award) > speech > vision. User side never swaps.
+ * OPENAI_API_KEY server-only.
  */
 
 const ACTIONS = [
@@ -30,6 +25,16 @@ const ACTIONS = [
 ]
 
 const OUTCOMES = ['point_for', 'point_against', 'double', 'no_touch']
+const REF_GESTURES = [
+  'hand_you',
+  'hand_them',
+  'simultaneous',
+  'nothing',
+  'attack',
+  'parry',
+  'incorrect',
+  'unknown',
+]
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -54,37 +59,6 @@ function getApiKey() {
   )
 }
 
-function parsePhrases(raw) {
-  if (!Array.isArray(raw)) return []
-  return raw.flatMap((item) => {
-    if (!item || typeof item !== 'object') return []
-    const action = String(item.action ?? '')
-    const outcome = String(item.outcome ?? '')
-    const timestamp = Number(item.timestamp)
-    if (!ACTIONS.includes(action) || !OUTCOMES.includes(outcome)) return []
-    if (!Number.isFinite(timestamp) || timestamp < 0) return []
-    const opponentRaw = item.opponentAction != null ? String(item.opponentAction) : ''
-    const opponentAction = ACTIONS.includes(opponentRaw) ? opponentRaw : undefined
-    return [
-      {
-        timestamp,
-        action,
-        opponentAction,
-        outcome,
-        refSignal:
-          typeof item.refSignal === 'string' && item.refSignal.trim()
-            ? item.refSignal.trim().slice(0, 120)
-            : undefined,
-        remark:
-          typeof item.remark === 'string'
-            ? item.remark
-            : 'AI draft — verify against ref call',
-        confidence: typeof item.confidence === 'number' ? item.confidence : undefined,
-      },
-    ]
-  })
-}
-
 function extractJsonObject(text) {
   const trimmed = text.trim()
   try {
@@ -92,68 +66,207 @@ function extractJsonObject(text) {
   } catch {
     const start = trimmed.indexOf('{')
     const end = trimmed.lastIndexOf('}')
-    if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1))
-    }
+    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1))
     throw new Error('Model response was not valid JSON')
   }
 }
 
-function formatAudioCues(cues) {
-  if (!Array.isArray(cues) || cues.length === 0) {
-    return 'No audio loudness peaks available (silent file or decode failed). Do not invent calls from silence.'
+function dataUrlToBuffer(dataUrl) {
+  const m = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl || '')
+  if (!m) return null
+  return { mime: m[1], buf: Buffer.from(m[2], 'base64') }
+}
+
+const CALL_RES = [
+  { re: /\bhalt\b/i, label: 'Halt' },
+  { re: /\btouch[eé]?\b/i, label: 'Touché' },
+  { re: /\battack\b/i, label: 'Attack' },
+  { re: /\briposte\b/i, label: 'Riposte' },
+  { re: /\bcounter[- ]?attack\b|\barr[eê]t\b/i, label: 'Counter-attack' },
+  { re: /\bparry\b|\bparade\b/i, label: 'Parry' },
+  { re: /\bsimultaneous\b/i, label: 'Simultaneous' },
+  { re: /\bnothing\b|\bno(?:\s+touch)?\b/i, label: 'Nothing' },
+  { re: /\bremise\b/i, label: 'Remise' },
+]
+
+function labelsFromSpeech(text) {
+  const out = []
+  for (const { re, label } of CALL_RES) {
+    if (re.test(text) && !out.includes(label)) out.push(label)
   }
-  const lines = cues.slice(0, 12).map((c) => {
-    const t = Number(c.timestamp)
-    const loud = Number(c.loudness)
-    if (!Number.isFinite(t)) return null
-    const loudStr = Number.isFinite(loud) ? loud.toFixed(2) : '?'
-    return `- t=${t.toFixed(2)}s loudness=${loudStr}`
+  return out
+}
+
+async function whisperClip(apiKey, clip) {
+  const parsed = dataUrlToBuffer(clip.dataUrl)
+  if (!parsed || parsed.buf.length < 256) return null
+
+  const form = new FormData()
+  const blob = new Blob([parsed.buf], { type: parsed.mime || 'audio/wav' })
+  form.append('file', blob, 'ref-call.wav')
+  form.append('model', process.env.OPENAI_WHISPER_MODEL?.trim() || 'whisper-1')
+  form.append('language', 'en')
+  form.append(
+    'prompt',
+    'Fencing referee calls: Halt, Attack, Riposte, Counter-attack, Touché, Simultaneous, Nothing, Parry, Remise.',
+  )
+
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal: AbortSignal.timeout(12_000),
   })
-  return [
-    'Audio loudness peaks (likely Halt / Touché / Attack / verbal calls — not speech transcription):',
-    ...lines.filter(Boolean),
-    'Prefer placing phrase timestamps near these peaks when frames also support a halt/award.',
-  ].join('\n')
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    return { error: data?.error?.message || `Whisper ${res.status}`, timestamp: clip.timestamp }
+  }
+  const text = typeof data.text === 'string' ? data.text.trim() : ''
+  return {
+    timestamp: Number(clip.timestamp) || 0,
+    text,
+    labels: labelsFromSpeech(text),
+  }
+}
+
+async function transcribeClips(apiKey, clips) {
+  const limited = (Array.isArray(clips) ? clips : []).slice(0, 4)
+  const results = await Promise.all(limited.map((c) => whisperClip(apiKey, c).catch((e) => ({
+    error: e instanceof Error ? e.message : 'whisper failed',
+    timestamp: c.timestamp,
+  }))))
+  return results.filter(Boolean)
+}
+
+function parsePhrases(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const action = String(item.action ?? '')
+    const outcome = String(item.outcome ?? '')
+    const timestamp = Number(item.timestamp ?? item.tHalt ?? item.tStart)
+    if (!ACTIONS.includes(action) || !OUTCOMES.includes(outcome)) return []
+    if (!Number.isFinite(timestamp) || timestamp < 0) return []
+    const opponentRaw = item.opponentAction != null ? String(item.opponentAction) : ''
+    const refGesture = String(item.refGesture ?? 'unknown')
+    const sources = Array.isArray(item.sources)
+      ? item.sources.filter((s) => typeof s === 'string').slice(0, 6)
+      : []
+    return [
+      {
+        timestamp,
+        tStart: Number.isFinite(Number(item.tStart)) ? Number(item.tStart) : undefined,
+        tHalt: Number.isFinite(Number(item.tHalt)) ? Number(item.tHalt) : timestamp,
+        action,
+        opponentAction: ACTIONS.includes(opponentRaw) ? opponentRaw : undefined,
+        outcome,
+        refGesture: REF_GESTURES.includes(refGesture) ? refGesture : 'unknown',
+        refWords:
+          typeof item.refWords === 'string' ? item.refWords.trim().slice(0, 160) : undefined,
+        refSignal:
+          typeof item.refSignal === 'string' ? item.refSignal.trim().slice(0, 120) : undefined,
+        sources,
+        needsReview: Boolean(item.needsReview),
+        remark:
+          typeof item.remark === 'string'
+            ? item.remark
+            : 'AI draft — verify ref call',
+        confidence: typeof item.confidence === 'number' ? item.confidence : undefined,
+      },
+    ]
+  })
+}
+
+/** Server-side rules: hands win for outcome. */
+function applyRules(phrases) {
+  return phrases.map((p) => {
+    const sources = new Set(p.sources || [])
+    let { outcome, needsReview } = p
+    const flags = []
+
+    if (p.refGesture === 'hand_you' && outcome !== 'point_for') {
+      outcome = 'point_for'
+      flags.push('hands→point_for')
+      sources.add('hands')
+      sources.add('rules')
+    }
+    if (p.refGesture === 'hand_them' && outcome !== 'point_against') {
+      outcome = 'point_against'
+      flags.push('hands→point_against')
+      sources.add('hands')
+      sources.add('rules')
+    }
+    if (
+      (p.refGesture === 'simultaneous' || p.refGesture === 'nothing' || p.refGesture === 'incorrect') &&
+      outcome !== 'no_touch'
+    ) {
+      outcome = 'no_touch'
+      flags.push('hands→no_touch')
+      sources.add('hands')
+      sources.add('rules')
+    }
+    if (p.refWords && /\bsimultaneous\b/i.test(p.refWords) && outcome !== 'no_touch') {
+      needsReview = true
+      flags.push('speech simul vs score')
+      sources.add('rules')
+    }
+    const renewals = ['Remise', 'Redoublement', 'Reprise']
+    const ripostes = ['Riposte', 'Parry-riposte', 'Counter-riposte']
+    if (
+      outcome === 'point_against' &&
+      renewals.includes(p.action) &&
+      ripostes.includes(p.opponentAction)
+    ) {
+      needsReview = true
+      flags.push('renewal vs riposte')
+      sources.add('rules')
+    }
+
+    return {
+      ...p,
+      outcome,
+      needsReview,
+      sources: [...sources],
+      remark: flags.length
+        ? `${p.remark || 'AI draft'} · Rules: ${flags.join('; ')}`
+        : p.remark,
+    }
+  })
 }
 
 const SYSTEM_PROMPT = [
-  'You are a sabre fencing analyst. You are NOT a trained pose classifier — reason from three signals in this priority:',
-  '1) REFEREE (ground truth for what happened): hand raise on awarded side, simultaneous, nothing, incorrect/too-short, scoreboard digit change after Halt.',
-  '2) AUDIO CUES: loudness peaks often mark Halt / Touché / Attack calls — align phrase times to peaks when consistent with frames.',
-  '3) USER SIDE: the analyzed fencer is explicitly left or right on screen — never swap "you" and opponent.',
-  'Then, and only then, infer actions from body/blade using FIE sabre ROW (t.100–106).',
-  'Outcome must follow the referee award relative to the user side. Do not award from lights alone.',
-  'Use exact action taxonomy strings. Be conservative. JSON only.',
+  'You are a sabre fencing analyst. NOT a trained pose classifier.',
+  'PRIORITY: (1) Referee HAND gestures decide the award/outcome relative to user side.',
+  '(2) SPEECH transcripts (Whisper) — what the ref said — lock timing and call type.',
+  '(3) VISION of fencers proposes actions only; never override a clear hand award.',
+  'User side is explicit left/right — never swap you vs opponent.',
+  'FIE sabre ROW t.100–106. JSON only.',
 ].join(' ')
 
-function buildUserPrompt(side, duration, actions, audioBlock) {
-  const oppSide = side === 'left' ? 'right' : 'left'
+function buildUserPrompt(side, duration, actions, speechBlock, fewShotBlock) {
+  const opp = side === 'left' ? 'right' : 'left'
   return [
-    `USER IDENTITY: "you" = fencer on the ${side} side of the screen. Opponent = ${oppSide} side. Never reverse this.`,
-    `Video duration ≈ ${duration || 'unknown'} seconds.`,
+    `USER: "you" = ${side} side of screen. Opponent = ${opp}. Never reverse.`,
+    `Duration ≈ ${duration || 'unknown'}s.`,
     '',
-    'DECISION ORDER (required):',
-    'A) From frames: find referee after Halt — which side gets the hand raise / simultaneous / nothing?',
-    `   Map award: hand on ${side} → point_for; hand on ${oppSide} → point_against; simultaneous/nothing → no_touch (prefer).`,
-    'B) Use audio peaks as candidate phrase times (Halt/call moments).',
-    'C) Label YOUR action and opponentAction with the taxonomy — consistent with the awarded call and ROW,',
-    '   not a vague guess from a single blurry pose.',
+    'SPEECH (Whisper on loudness clips — may be empty/noisy; be honest):',
+    speechBlock,
     '',
-    audioBlock,
+    'PRIOR USER CORRECTIONS (few-shot; prefer matching patterns when similar):',
+    fewShotBlock,
     '',
-    'For EACH phrase return:',
-    '(1) timestamp — prefer near an audio peak and/or ref signal frame',
-    '(2) action — YOUR action (exact string)',
-    '(3) opponentAction — OTHER fencer (exact string when known)',
-    '(4) outcome — from YOUR perspective, driven by referee award',
-    '(5) refSignal — short: e.g. "hand up left", "simultaneous", "nothing", "no ref visible"',
-    `Allowed actions: ${actions.join(' | ')}`,
-    `Allowed outcomes: ${OUTCOMES.join(' | ')}`,
-    'Sabre: no flèche label; remises lose to immediate riposte; stop-hit must be in time (Counterattack).',
-    'Timestamps in [0, duration] when duration > 0.',
+    'DECISION ORDER:',
+    'A) From frames marked role=ref: which side gets hand raise / simultaneous / nothing?',
+    `   hand on ${side} → refGesture=hand_you, outcome=point_for; on ${opp} → hand_them, point_against.`,
+    'B) Align phrase tHalt to speech timestamps / Halt moments when consistent.',
+    'C) Label actions from taxonomy consistent with award + ROW; set sources array.',
+    'D) Set needsReview=true on contradictions (e.g. renewal vs immediate riposte award).',
+    '',
+    `Actions: ${actions.join(' | ')}`,
+    `Outcomes: ${OUTCOMES.join(' | ')}`,
+    `refGesture: ${REF_GESTURES.join(' | ')}`,
     'Return ONLY JSON:',
-    '{"phrases":[{"timestamp":number,"action":string,"opponentAction":string,"outcome":string,"refSignal":string,"confidence":number,"remark":string}]}',
+    '{"phrases":[{"timestamp":number,"tStart":number,"tHalt":number,"action":string,"opponentAction":string,"outcome":string,"refGesture":string,"refWords":string,"refSignal":string,"sources":["hands","speech","vision"],"needsReview":boolean,"confidence":number,"remark":string}]}',
   ].join('\n')
 }
 
@@ -161,7 +274,6 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: cors, body: '' }
   }
-
   if (event.httpMethod !== 'POST') {
     return json(405, { error: 'Method not allowed', phrases: [] })
   }
@@ -169,8 +281,7 @@ export async function handler(event) {
   const apiKey = getApiKey()
   if (!apiKey) {
     return json(503, {
-      error:
-        'Analysis key missing on server. Set OPENAI_API_KEY (preferred) in Netlify env for functions.',
+      error: 'Analysis key missing. Set OPENAI_API_KEY in Netlify env for functions.',
       phrases: [],
     })
   }
@@ -185,25 +296,65 @@ export async function handler(event) {
   const side = payload.side === 'right' ? 'right' : 'left'
   const frames = Array.isArray(payload.frames) ? payload.frames : []
   const audioCues = Array.isArray(payload.audioCues) ? payload.audioCues : []
+  const audioClips = Array.isArray(payload.audioClips) ? payload.audioClips : []
+  const fewShot = Array.isArray(payload.fewShot) ? payload.fewShot : []
   const duration = Number(payload.duration) || 0
   const actions = Array.isArray(payload.actions) ? payload.actions : ACTIONS
 
   if (frames.length === 0) {
-    return json(400, {
-      error: 'No frames provided. Client must send sampled video keyframes.',
-      phrases: [],
-    })
+    return json(400, { error: 'No frames provided.', phrases: [] })
+  }
+  if (frames.length > 10) {
+    return json(400, { error: 'Too many frames (max 10).', phrases: [] })
   }
 
-  if (frames.length > 8) {
-    return json(400, { error: 'Too many frames (max 8).', phrases: [] })
+  // Phase 1 — speech
+  let transcripts = []
+  let speechNote = 'No audio clips — speech skipped (peaks-only or decode failed).'
+  try {
+    transcripts = await transcribeClips(apiKey, audioClips)
+    const ok = transcripts.filter((t) => t.text)
+    speechNote = ok.length
+      ? ok.map((t) => `t=${Number(t.timestamp).toFixed(2)}s: "${t.text}" [${(t.labels || []).join(', ')}]`).join('\n')
+      : transcripts.some((t) => t.error)
+        ? `Whisper errors: ${transcripts.map((t) => t.error).filter(Boolean).join('; ')}`
+        : 'Whisper returned empty text (quiet / unclear audio).'
+  } catch (err) {
+    speechNote = `Speech failed: ${err instanceof Error ? err.message : 'error'}`
   }
 
-  const audioBlock = formatAudioCues(audioCues)
+  const fewShotBlock =
+    fewShot.length === 0
+      ? 'None yet.'
+      : fewShot
+          .slice(0, 6)
+          .map(
+            (e, i) =>
+              `${i + 1}. you=${e.action}` +
+              (e.opponentAction ? ` opp=${e.opponentAction}` : '') +
+              ` outcome=${e.outcome}` +
+              (e.refWords ? ` said="${String(e.refWords).slice(0, 40)}"` : ''),
+          )
+          .join('\n')
+
+  const peaksLine =
+    audioCues.length > 0
+      ? `Loudness peaks: ${audioCues
+          .slice(0, 10)
+          .map((c) => `t=${Number(c.timestamp).toFixed(2)}`)
+          .join(', ')}`
+      : 'No loudness peaks.'
+
   const content = [
     {
       type: 'text',
-      text: buildUserPrompt(side, duration, actions, audioBlock),
+      text: buildUserPrompt(
+        side,
+        duration,
+        actions,
+        `${peaksLine}\n${speechNote}`,
+        fewShotBlock,
+      ),
     },
   ]
 
@@ -211,9 +362,14 @@ export async function handler(event) {
     const timestamp = Number(frame.timestamp)
     const dataUrl = typeof frame.dataUrl === 'string' ? frame.dataUrl : ''
     if (!dataUrl.startsWith('data:image/') || !Number.isFinite(timestamp)) continue
+    const role = frame.role === 'ref' ? 'ref' : 'piste'
     content.push({
       type: 'text',
-      text: `Frame at t=${timestamp.toFixed(2)}s — prioritize referee hands/signals, then scoreboard/lights, then fencers (${side}=you).`,
+      text: `Frame t=${timestamp.toFixed(2)}s role=${role} — ${
+        role === 'ref'
+          ? 'look for referee hands/signals/scoreboard'
+          : 'look for fencing phrase structure'
+      } (${side}=you).`,
     })
     content.push({
       type: 'image_url',
@@ -222,11 +378,11 @@ export async function handler(event) {
   }
 
   if (content.length < 3) {
-    return json(400, { error: 'No valid frame images in request.', phrases: [] })
+    return json(400, { error: 'No valid frame images.', phrases: [] })
   }
 
   const model = process.env.OPENAI_ANALYSIS_MODEL?.trim() || 'gpt-4o-mini'
-  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 22_000
+  const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 18_000
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -238,8 +394,8 @@ export async function handler(event) {
       signal: AbortSignal.timeout(openaiTimeoutMs),
       body: JSON.stringify({
         model,
-        temperature: 0.15,
-        max_tokens: 1800,
+        temperature: 0.12,
+        max_tokens: 2000,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -250,22 +406,38 @@ export async function handler(event) {
 
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      const message =
-        data?.error?.message ||
-        `OpenAI request failed (${response.status}). Check OPENAI_API_KEY and billing.`
-      return json(502, { error: message, phrases: [] })
+      return json(502, {
+        error: data?.error?.message || `OpenAI failed (${response.status})`,
+        phrases: [],
+        meta: { speechNote, transcripts },
+      })
     }
 
     const text = data?.choices?.[0]?.message?.content
     if (typeof text !== 'string' || !text.trim()) {
-      return json(502, { error: 'Empty model response', phrases: [] })
+      return json(502, { error: 'Empty model response', phrases: [], meta: { speechNote } })
     }
 
     const parsed = extractJsonObject(text)
     let phrases = parsePhrases(parsed.phrases)
-    if (duration > 0) {
-      phrases = phrases.filter((p) => p.timestamp <= duration + 0.5)
+
+    // Attach nearest Whisper text if model omitted refWords
+    for (const p of phrases) {
+      if (p.refWords) continue
+      const near = transcripts
+        .filter((t) => t.text)
+        .sort(
+          (a, b) =>
+            Math.abs(a.timestamp - p.timestamp) - Math.abs(b.timestamp - p.timestamp),
+        )[0]
+      if (near && Math.abs(near.timestamp - p.timestamp) < 2.5) {
+        p.refWords = near.text.slice(0, 160)
+        p.sources = [...new Set([...(p.sources || []), 'speech'])]
+      }
     }
+
+    phrases = applyRules(phrases)
+    if (duration > 0) phrases = phrases.filter((p) => p.timestamp <= duration + 0.5)
     phrases.sort((a, b) => a.timestamp - b.timestamp)
 
     return json(200, {
@@ -274,16 +446,20 @@ export async function handler(event) {
         model,
         frameCount: frames.length,
         audioCueCount: audioCues.length,
+        whisperCount: transcripts.filter((t) => t.text).length,
+        transcripts,
+        speechNote,
         note:
-          'Drafts use ref gestures (ground truth for award) + audio peaks + your left/right side. Not a trained sabre classifier — review and Edit.',
+          'Hands decide award; Whisper + vision propose timing/actions. Not a trained sabre classifier — Edit when wrong.',
       },
     })
   } catch (err) {
     const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : ''
     if (name === 'TimeoutError' || name === 'AbortError') {
       return json(504, {
-        error: `OpenAI timed out after ${Math.round(openaiTimeoutMs / 1000)}s. Try again or mark phrases manually.`,
+        error: `OpenAI timed out after ${Math.round(openaiTimeoutMs / 1000)}s.`,
         phrases: [],
+        meta: { speechNote },
       })
     }
     return json(500, {

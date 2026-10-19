@@ -1,14 +1,19 @@
-import type { ActionName, Outcome, Phrase } from '../../types'
-import type { AudioCue } from '../audio'
+import type { ActionName, AnalysisSource, Outcome, Phrase, RefGesture } from '../../types'
+import type { AudioClip, AudioCue } from '../audio'
+import type { CorrectionExample } from './corrections'
 
 export interface AnalysisDraftPhrase {
   timestamp: number
+  tStart?: number
+  tHalt?: number
   action: ActionName
-  /** Opponent action in the same phrase (same taxonomy), when inferable. */
   opponentAction?: ActionName
   outcome: Outcome
-  /** Visible referee signal summary, e.g. "hand raised left". */
   refSignal?: string
+  refGesture?: RefGesture
+  refWords?: string
+  sources?: AnalysisSource[]
+  needsReview?: boolean
   remark?: string
   confidence?: number
 }
@@ -16,6 +21,7 @@ export interface AnalysisDraftPhrase {
 export interface AnalysisFrame {
   timestamp: number
   dataUrl: string
+  role?: 'piste' | 'ref'
 }
 
 export interface AnalysisRequest {
@@ -24,8 +30,9 @@ export interface AnalysisRequest {
   title?: string
   duration?: number
   frames: AnalysisFrame[]
-  /** Loudness peaks — likely Halt / call moments. */
   audioCues?: AudioCue[]
+  audioClips?: AudioClip[]
+  fewShot?: CorrectionExample[]
 }
 
 export interface AnalysisResult {
@@ -46,11 +53,17 @@ export function draftsToPhrases(
 ): Phrase[] {
   return drafts.map((draft) => ({
     id: newId(),
-    timestamp: draft.timestamp,
+    timestamp: draft.tHalt ?? draft.timestamp,
+    tStart: draft.tStart,
+    tHalt: draft.tHalt ?? draft.timestamp,
     action: draft.action,
     opponentAction: draft.opponentAction,
     outcome: draft.outcome,
     refSignal: draft.refSignal,
+    refGesture: draft.refGesture,
+    refWords: draft.refWords,
+    sources: draft.sources,
+    needsReview: draft.needsReview,
     remark:
       draft.remark ??
       (draft.confidence != null

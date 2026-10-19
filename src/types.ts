@@ -1,5 +1,12 @@
 export { ACTIONS, type ActionName, isActionName, coerceActionName, ACTION_BLURBS } from './lib/actions'
+export {
+  REF_GESTURES,
+  type RefGesture,
+  type AnalysisSource,
+  formatRefChip,
+} from './lib/refLexicon'
 import type { ActionName } from './lib/actions'
+import type { AnalysisSource, RefGesture } from './lib/refLexicon'
 
 export const OUTCOMES = [
   'point_for',
@@ -23,32 +30,44 @@ export type ScoreState = 'ahead' | 'tied' | 'behind' | 'unknown'
 
 export type Initiative = 'you' | 'them' | 'unknown'
 
+/**
+ * Phrase event contract (smart-analysis plan Phase 0).
+ * `timestamp` remains the seek target (prefer tHalt ?? tStart).
+ */
 export interface Phrase {
   id: string
-  /** Seconds into the video (phrase start / seek target). */
+  /** Seek target — prefer tHalt when known. */
   timestamp: number
-  /** Your action in the phrase (relative to selected left/right side). */
+  /** Phrase start (seconds), when known. */
+  tStart?: number
+  /** Halt / award moment (seconds), when known. */
+  tHalt?: number
+  /** Your action (relative to selected left/right). */
   action: ActionName
-  /**
-   * Opponent's action in the same phrase (same taxonomy).
-   * Used for "when you win / lose the point, what did they do?" charts.
-   */
   opponentAction?: ActionName
-  outcome: Outcome
-  /** Optional note when the awarded call looks wrong; does not change counts. */
-  remark?: string
   /**
-   * What the referee appeared to signal (hand raise / simultaneous / nothing),
-   * when visible in frames. Does not change counts by itself.
+   * Ground-truth outcome from ref award relative to your side.
+   * Hands win over vision/speech proposals unless edited.
    */
+  outcome: Outcome
+  /** Free-text note / analysis remark. */
+  remark?: string
+  /** Legacy free-text ref note (kept for older drafts). */
   refSignal?: string
-  /** Score for "you" before this phrase (optional situation label). */
+  /** Structured gesture from Gestes et Mots mapping. */
+  refGesture?: RefGesture
+  /** Spoken call snippet (Whisper / lexicon). */
+  refWords?: string
+  /** Which signals contributed. */
+  sources?: AnalysisSource[]
+  /** User corrected via Edit. */
+  edited?: boolean
+  /** Rules layer flagged a contradiction. */
+  needsReview?: boolean
   scoreYou?: number
-  /** Score for opponent before this phrase. */
   scoreThem?: number
-  /** Who started the phrase / had initiative. */
   initiative?: Initiative
-  /** True when this phrase was suggested by the analysis provider (not yet confirmed). */
+  /** AI draft not yet confirmed. */
   fromAnalysis?: boolean
 }
 
@@ -56,11 +75,9 @@ export interface Phrase {
 export interface OpponentActionShare {
   action: ActionName
   count: number
-  /** Share of phrases in this situation bucket. */
   share: number | null
 }
 
-/** When you win vs lose the point — what the opponent did. */
 export interface OpponentSituationStats {
   whenYouWin: {
     phrases: number
@@ -70,10 +87,6 @@ export interface OpponentSituationStats {
     phrases: number
     byAction: OpponentActionShare[]
   }
-  /**
-   * Across decisive phrases (for/against), how often each opponent action
-   * succeeded for them (your point_against) vs failed (your point_for).
-   */
   opponentSuccess: Array<{
     action: ActionName
     attempts: number
@@ -89,18 +102,11 @@ export interface Bout {
   side: FencerSide
   createdAt: string
   updatedAt?: string
-  /**
-   * Optional calendar date when the bout was filmed (YYYY-MM-DD).
-   * Used for History trends; falls back to createdAt when absent.
-   */
   recordedAt?: string
-  /** True when this bout is sample data for exploring stats without a real upload. */
   isDemo?: boolean
   hasVideo: boolean
   phrases: Phrase[]
-  /** Optional competition / playlist tags (ids). */
   playlistIds?: string[]
-  /** Cloud sync id when Supabase is configured. */
   remoteId?: string
 }
 
@@ -116,7 +122,6 @@ export interface Invite {
   boutId: string
   token: string
   createdAt: string
-  /** read-only coach share */
   role: 'coach'
   label?: string
 }

@@ -2,11 +2,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BarChart } from './components/Charts'
 import { PhraseRow } from './components/PhraseEdit'
 import { HistoryPage } from './HistoryPage'
+import { loadFewShotExamples, rememberCorrection } from './lib/analysis/corrections'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
+import { applyPhraseRules } from './lib/analysis/rules'
 import { ACTIONS, type ActionName } from './lib/actions'
-import { extractAudioCues } from './lib/audio'
-import { captureKeyframes } from './lib/frames'
+import { extractAudioClips, extractAudioCues } from './lib/audio'
+import { captureSmartFrames } from './lib/frames'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
 import { newId, saveBout } from './lib/storage'
 import type { Bout, FencerSide, Outcome, Phrase } from './types'
@@ -114,6 +116,7 @@ export default function App() {
   }
 
   function updatePhrase(nextPhrase: Phrase) {
+    if (nextPhrase.edited) rememberCorrection(nextPhrase)
     const next = phrases
       .map((p) => (p.id === nextPhrase.id ? nextPhrase : p))
       .sort((a, b) => a.timestamp - b.timestamp)
@@ -165,18 +168,33 @@ export default function App() {
 
       setStatus('Reading audio peaks…')
       const audioCues = file ? await extractAudioCues(file, { maxPeaks: 8 }) : []
+      setStatus(
+        audioCues.length
+          ? `Cutting speech clips (${Math.min(4, audioCues.length)})…`
+          : 'No audio peaks — sampling frames…',
+      )
+      const audioClips = file && audioCues.length
+        ? await extractAudioClips(file, audioCues, { maxClips: 4, padSec: 1.2 })
+        : []
 
-      setStatus('Sampling frames (0/6)…')
-      const { frames, duration } = await captureKeyframes(video, {
-        count: 6,
+      const anchors = [
+        ...audioCues.map((c) => c.timestamp),
+        ...audioClips.map((c) => c.timestamp),
+      ]
+      setStatus('Sampling frames around Halt…')
+      const { frames, duration } = await captureSmartFrames(video, {
+        anchors,
+        evenCount: 3,
+        maxFrames: 8,
         maxWidth: 384,
         quality: 0.55,
         onProgress: (done, total) => setStatus(`Sampling frames (${done}/${total})…`),
       })
+      const fewShot = loadFewShotExamples(6)
       setStatus(
-        audioCues.length
-          ? `Calling analysis (${audioCues.length} audio peaks + frames)…`
-          : 'Calling analysis (frames; no audio peaks)…',
+        audioClips.length
+          ? `Whisper + vision (${audioClips.length} clips, ${frames.length} frames)…`
+          : `Vision only (${frames.length} frames)…`,
       )
       const result = await getAnalysisProvider().analyze({
         side,
@@ -184,9 +202,11 @@ export default function App() {
         duration,
         frames,
         audioCues,
+        audioClips,
+        fewShot,
       })
       if (result.status === 'ok' && result.drafts.length > 0) {
-        const drafts = draftsToPhrases(result.drafts, newId)
+        const drafts = applyPhraseRules(draftsToPhrases(result.drafts, newId), side)
         const next = [...phrases, ...drafts].sort((a, b) => a.timestamp - b.timestamp)
         await applyPhrases(next)
       }
@@ -321,8 +341,7 @@ export default function App() {
               {analyzing ? 'Analyzing…' : 'Analyze bout'}
             </button>
             <p className="tag-hint">
-              Uses ref gestures, audio peaks, and your left/right. Drafts — Edit if the call is
-              wrong.
+              Ref hands + speech (Whisper) + your side. Hands decide the award. Edit if wrong.
             </p>
           </div>
           {status ? (

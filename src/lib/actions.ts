@@ -47,13 +47,19 @@ export const ACTION_BLURBS: Record<ActionName, string> = {
   'No action': 'Halt with neither fencer finishing a scoring action.',
 }
 
-/** Map older / alternate labels into the canonical set. */
+/** Map older / alternate labels into the canonical set (Phase 5 aliases). */
 const LEGACY_ALIASES: Record<string, ActionName> = {
   'stop-hit': 'Counterattack',
   'stop hit': 'Counterattack',
   'stop cut': 'Counterattack',
+  'arrêt': 'Counterattack',
+  'arret': 'Counterattack',
+  'taking the blade': 'Prise de fer',
+  'beat': 'Beat attack',
+  'direct attack': 'Simple attack',
   'nothing': 'No action',
   'no touch action': 'No action',
+  'no action': 'No action',
 }
 
 export function isActionName(value: string): value is ActionName {

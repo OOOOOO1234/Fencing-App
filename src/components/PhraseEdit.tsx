@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ACTIONS } from '../lib/actions'
+import { formatRefChip } from '../lib/refLexicon'
 import { formatTime } from '../lib/stats'
 import type { ActionName, Outcome, Phrase } from '../types'
 import { OUTCOME_LABELS, OUTCOMES } from '../types'
@@ -11,7 +12,7 @@ interface PhraseEditProps {
   onRemove: () => void
 }
 
-/** Compact inline edit — action / opponent / result only. */
+/** Compact inline edit — action / opponent / result (+ optional ref words). */
 export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps) {
   const [editing, setEditing] = useState(false)
   const [action, setAction] = useState<ActionName>(phrase.action)
@@ -19,11 +20,15 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
     phrase.opponentAction ?? '',
   )
   const [outcome, setOutcome] = useState<Outcome>(phrase.outcome)
+  const [refWords, setRefWords] = useState(phrase.refWords ?? '')
+
+  const chip = formatRefChip(phrase)
 
   function startEdit() {
     setAction(phrase.action)
     setOpponentAction(phrase.opponentAction ?? '')
     setOutcome(phrase.outcome)
+    setRefWords(phrase.refWords ?? '')
     setEditing(true)
   }
 
@@ -33,7 +38,11 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
       action,
       opponentAction: opponentAction || undefined,
       outcome,
+      refWords: refWords.trim() || undefined,
       fromAnalysis: false,
+      edited: true,
+      needsReview: false,
+      sources: [...new Set([...(phrase.sources ?? []), 'edit' as const])],
       remark: phrase.fromAnalysis ? undefined : phrase.remark,
     })
     setEditing(false)
@@ -77,6 +86,15 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
             ))}
           </select>
         </label>
+        <label className="log-field log-ref-input">
+          <span className="sr-only">Ref said</span>
+          <input
+            type="text"
+            value={refWords}
+            placeholder="Ref said…"
+            onChange={(e) => setRefWords(e.target.value)}
+          />
+        </label>
         <button type="button" className="text-btn" onClick={save}>
           Save
         </button>
@@ -95,10 +113,15 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
           {phrase.action}
           {phrase.opponentAction ? ` vs ${phrase.opponentAction}` : ''}
           {phrase.fromAnalysis ? ' · draft' : ''}
-          {phrase.refSignal ? ` · ${phrase.refSignal}` : ''}
+          {phrase.needsReview ? ' · review' : ''}
         </span>
         <span>{OUTCOME_LABELS[phrase.outcome]}</span>
       </button>
+      {chip ? (
+        <span className="ref-chip" title={phrase.refWords || phrase.refSignal || chip}>
+          Ref: {chip}
+        </span>
+      ) : null}
       <button type="button" className="text-btn" onClick={startEdit}>
         Edit
       </button>
