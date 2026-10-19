@@ -13,7 +13,14 @@ export const REF_GESTURES = [
 
 export type RefGesture = (typeof REF_GESTURES)[number]
 
-export type AnalysisSource = 'hands' | 'speech' | 'vision' | 'audio_peak' | 'rules' | 'edit'
+export type AnalysisSource =
+  | 'hands'
+  | 'speech'
+  | 'vision'
+  | 'audio_peak'
+  | 'rules'
+  | 'edit'
+  | 'jev'
 
 /** Spoken tokens we care about (normalized). */
 const CALL_PATTERNS: Array<{ re: RegExp; label: string; gestureHint?: RefGesture }> = [

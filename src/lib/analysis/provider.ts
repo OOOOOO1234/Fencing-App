@@ -26,7 +26,8 @@ function isSource(value: unknown): value is AnalysisSource {
     value === 'vision' ||
     value === 'audio_peak' ||
     value === 'rules' ||
-    value === 'edit'
+    value === 'edit' ||
+    value === 'jev'
   )
 }
 
@@ -62,7 +63,18 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
       const data = (await response.json().catch(() => ({}))) as {
         phrases?: unknown
         error?: string
-        meta?: { note?: string; whisperCount?: number; speechNote?: string }
+        meta?: {
+          note?: string
+          whisperCount?: number
+          speechNote?: string
+          cost?: {
+            path?: string
+            gptVisionCalls?: number
+            whisperOk?: number
+            estimate?: { totalUsd?: number }
+            jevSkippedGpt?: boolean
+          }
+        }
       }
 
       if (response.status === 503) {
@@ -120,11 +132,18 @@ export const netlifyAnalysisProvider: AnalysisProvider = {
       const whisper = data.meta?.whisperCount ?? 0
       const withRef = drafts.filter((d) => d.refWords || d.refGesture).length
       const review = drafts.filter((d) => d.needsReview).length
+      const cost = data.meta?.cost
+      const costBit =
+        cost?.gptVisionCalls === 0 && cost?.jevSkippedGpt
+          ? ' · GPT skipped'
+          : cost?.gptVisionCalls
+            ? ' · GPT on'
+            : ''
       return {
         status: 'ok',
         message:
           drafts.length > 0
-            ? `Drafted ${drafts.length} · ${whisper} speech clips · ${withRef} with ref · ${review} review. Edit if wrong.${note}`
+            ? `Drafted ${drafts.length} · ${whisper} speech clips · ${withRef} with ref · ${review} review${costBit}. Edit if wrong.${note}`
             : `No phrases drafted.${data.meta?.speechNote ? ` ${data.meta.speechNote}` : ''}${note}`,
         drafts,
       }
