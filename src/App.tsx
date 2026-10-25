@@ -248,8 +248,10 @@ export default function App() {
           </nav>
         </div>
         {page === 'analyze' ? (
-          <p className="lede">
-            Sabre Moneyball — your rates, and what the opponent does when you win or lose the point.
+          <p className="lede uvp">
+            TouchStat delivers instant, AI-powered video breakdown for every fencing touch,
+            turning raw bout footage into clear, actionable action stats for Foil, Épée, and
+            Saber.
           </p>
         ) : (
           <p className="lede">Usage and success trends across saved bouts.</p>
