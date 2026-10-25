@@ -10,11 +10,14 @@ import { ACTIONS, type ActionName } from './lib/actions'
 import { extractAudioClips, extractAudioCues } from './lib/audio'
 import { captureSmartFrames } from './lib/frames'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
-import { newId, saveBout } from './lib/storage'
+import { createDemoBout, newId, saveBout } from './lib/storage'
 import type { Bout, FencerSide, Outcome, Phrase } from './types'
 import { OUTCOME_LABELS, OUTCOMES } from './types'
 
 type Page = 'analyze' | 'history'
+
+const DEMO_VIDEO_PATH = '/demo/sabre-sample.webm'
+const DEMO_VIDEO_NAME = 'Demo sabre bout (Commons sample)'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -33,12 +36,56 @@ export default function App() {
   const [timeLabel, setTimeLabel] = useState('0:00')
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [demoMode, setDemoMode] = useState(false)
 
   useEffect(() => {
     return () => {
       if (videoUrl) URL.revokeObjectURL(videoUrl)
     }
   }, [videoUrl])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('demo') !== '1') return
+    let cancelled = false
+
+    async function loadDemo() {
+      setStatus('Loading demo sabre bout…')
+      try {
+        const res = await fetch(DEMO_VIDEO_PATH)
+        if (!res.ok) throw new Error(`Demo video missing (${res.status})`)
+        const blob = await res.blob()
+        if (cancelled) return
+        const demoFile = new File([blob], DEMO_VIDEO_NAME, {
+          type: blob.type || 'video/webm',
+        })
+        const demo = createDemoBout()
+        if (videoUrl) URL.revokeObjectURL(videoUrl)
+        setDemoMode(true)
+        setBoutId(demo.id)
+        setCreatedAt(demo.createdAt)
+        setFile(demoFile)
+        setVideoUrl(URL.createObjectURL(demoFile))
+        setSide(demo.side)
+        setPhrases(demo.phrases)
+        setTimeLabel('0:00')
+        setStatus(
+          'Demo test run loaded — sample sabre video with seeded Moneyball tags. Press Analyze bout to re-run AI.',
+        )
+        await saveBout({ ...demo, title: DEMO_VIDEO_NAME, hasVideo: true })
+      } catch (err) {
+        if (!cancelled) {
+          setStatus(err instanceof Error ? err.message : 'Demo load failed')
+        }
+      }
+    }
+
+    void loadDemo()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount for ?demo=1
+  }, [])
 
   async function persist(
     nextPhrases: Phrase[],
@@ -80,6 +127,12 @@ export default function App() {
     setPhrases([])
     setTimeLabel('0:00')
     setStatus(null)
+    setDemoMode(false)
+    if (new URLSearchParams(window.location.search).has('demo')) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('demo')
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+    }
   }
 
   function syncTime() {
@@ -318,6 +371,7 @@ export default function App() {
               <strong>{file?.name}</strong>
               <span> · {side}</span>
               {recordedAt ? <span> · {recordedAt}</span> : null}
+              {demoMode ? <span> · demo</span> : null}
             </p>
             <button type="button" className="text-btn" onClick={reset}>
               New video

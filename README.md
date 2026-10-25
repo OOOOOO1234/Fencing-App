@@ -4,6 +4,8 @@ Single page: upload one sabre bout video, pick left or right, see Moneyball atte
 
 **Live:** https://fencing-app.netlify.app
 
+**Demo bout (sample video + tags):** append `?demo=1` — e.g. https://fencing-app.netlify.app/?demo=1
+
 ```bash
 npm install
 npm run dev
