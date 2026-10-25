@@ -2,9 +2,9 @@
 
 Single page: upload one sabre bout video, pick left or right, see Moneyball attempt / success / fail rates by action.
 
-**Live:** https://fencing-app.netlify.app
+**Live:** https://touchstat.netlify.app
 
-**Demo bout (sample video + tags):** append `?demo=1` — e.g. https://fencing-app.netlify.app/?demo=1
+**Demo bout (sample video + tags):** append `?demo=1` — e.g. https://touchstat.netlify.app/?demo=1
 
 ```bash
 npm install
