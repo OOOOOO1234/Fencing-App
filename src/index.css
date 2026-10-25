@@ -114,6 +114,12 @@ button {
   font-weight: 500;
 }
 
+.lede.uvp {
+  max-width: 40rem;
+  font-size: clamp(1rem, 2.4vw, 1.12rem);
+  line-height: 1.5;
+}
+
 .date-field {
   display: flex;
   flex-direction: column;

@@ -125,19 +125,20 @@ export function newId(): string {
 }
 
 export function createDemoBout(): Bout {
+  /** Timestamps fit the ~62s Commons sabre sample used by ?demo=1. */
   const phrases: Phrase[] = [
-    { id: newId(), timestamp: 12, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 0, initiative: 'you' },
-    { id: newId(), timestamp: 28, action: 'Parry-riposte', outcome: 'point_for', scoreYou: 1, scoreThem: 0, initiative: 'them' },
-    { id: newId(), timestamp: 41, action: 'Counterattack', outcome: 'point_against', scoreYou: 2, scoreThem: 0, initiative: 'them' },
-    { id: newId(), timestamp: 55, action: 'Simple attack', outcome: 'point_against', scoreYou: 2, scoreThem: 1, initiative: 'you' },
-    { id: newId(), timestamp: 70, action: 'Attack on the preparation', outcome: 'point_for', scoreYou: 2, scoreThem: 2, initiative: 'you' },
-    { id: newId(), timestamp: 88, action: 'Beat attack', outcome: 'no_touch', scoreYou: 3, scoreThem: 2, initiative: 'you' },
-    { id: newId(), timestamp: 102, action: 'Compound attack', outcome: 'point_for', scoreYou: 3, scoreThem: 2, initiative: 'you' },
-    { id: newId(), timestamp: 118, action: 'Parry-riposte', outcome: 'point_against', scoreYou: 4, scoreThem: 2, initiative: 'them' },
-    { id: newId(), timestamp: 135, action: 'Remise', outcome: 'point_for', scoreYou: 4, scoreThem: 3, initiative: 'you' },
-    { id: newId(), timestamp: 150, action: 'Simple attack', outcome: 'point_for', scoreYou: 5, scoreThem: 3, initiative: 'you' },
-    { id: newId(), timestamp: 168, action: 'Preparation only', outcome: 'no_touch', scoreYou: 6, scoreThem: 3, initiative: 'you' },
-    { id: newId(), timestamp: 185, action: 'Counterattack', outcome: 'double', scoreYou: 6, scoreThem: 3, initiative: 'them' },
+    { id: newId(), timestamp: 5, action: 'Simple attack', outcome: 'point_for', scoreYou: 0, scoreThem: 0, initiative: 'you' },
+    { id: newId(), timestamp: 11, action: 'Parry-riposte', outcome: 'point_for', scoreYou: 1, scoreThem: 0, initiative: 'them' },
+    { id: newId(), timestamp: 17, action: 'Counterattack', outcome: 'point_against', scoreYou: 2, scoreThem: 0, initiative: 'them' },
+    { id: newId(), timestamp: 23, action: 'Simple attack', outcome: 'point_against', scoreYou: 2, scoreThem: 1, initiative: 'you' },
+    { id: newId(), timestamp: 29, action: 'Attack on the preparation', outcome: 'point_for', scoreYou: 2, scoreThem: 2, initiative: 'you' },
+    { id: newId(), timestamp: 35, action: 'Beat attack', outcome: 'no_touch', scoreYou: 3, scoreThem: 2, initiative: 'you' },
+    { id: newId(), timestamp: 41, action: 'Compound attack', outcome: 'point_for', scoreYou: 3, scoreThem: 2, initiative: 'you' },
+    { id: newId(), timestamp: 46, action: 'Parry-riposte', outcome: 'point_against', scoreYou: 4, scoreThem: 2, initiative: 'them' },
+    { id: newId(), timestamp: 51, action: 'Remise', outcome: 'point_for', scoreYou: 4, scoreThem: 3, initiative: 'you' },
+    { id: newId(), timestamp: 55, action: 'Simple attack', outcome: 'point_for', scoreYou: 5, scoreThem: 3, initiative: 'you' },
+    { id: newId(), timestamp: 58, action: 'Preparation only', outcome: 'no_touch', scoreYou: 6, scoreThem: 3, initiative: 'you' },
+    { id: newId(), timestamp: 60, action: 'Counterattack', outcome: 'double', scoreYou: 6, scoreThem: 3, initiative: 'them' },
   ]
 
   return {
@@ -146,7 +147,7 @@ export function createDemoBout(): Bout {
     side: 'left',
     createdAt: new Date().toISOString(),
     isDemo: true,
-    hasVideo: false,
+    hasVideo: true,
     phrases,
   }
 }

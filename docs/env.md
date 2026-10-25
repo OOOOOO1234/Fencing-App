@@ -43,6 +43,6 @@ If `JEV_API_URL` is unset or SystemOne is unreachable → **full GPT** (same as 
 
 ## Netlify
 
-Site: https://fencing-app.netlify.app  
-Dashboard: https://app.netlify.com/projects/fencing-app  
-Site id: `d1840683-a127-46a4-b8ac-e65b61e5b325`
+Site: https://touchstat.netlify.app  
+Dashboard: https://app.netlify.com/projects/touchstat  
+Site id: `e88812c7-6f56-4b6a-8c8a-aa3bac0c271b`

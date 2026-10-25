@@ -1,5 +1,5 @@
 {
-  "name": "fencing-app",
+  "name": "touchstat",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -30,5 +30,5 @@
     "vite": "^8.3.0",
     "vitest": "^5.0.4"
   },
-  "description": "Sabre bout analytics — upload, tag phrases, Moneyball stats"
+  "description": "TouchStat — sabre bout analytics: upload, tag phrases, Moneyball stats"
 }
