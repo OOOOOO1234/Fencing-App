@@ -229,7 +229,7 @@ export default function App() {
 
       <header className="masthead">
         <div className="masthead-row">
-          <h1 className="brand">Fencing-App</h1>
+          <h1 className="brand">TouchStat</h1>
           <nav className="nav" aria-label="Pages">
             <button
               type="button"

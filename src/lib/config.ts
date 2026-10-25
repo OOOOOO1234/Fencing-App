@@ -10,7 +10,7 @@ export const config = {
   supabaseAnonKey: read('VITE_SUPABASE_ANON_KEY'),
   /** Relative Netlify Function — no client API key. */
   analysisUrl: '/.netlify/functions/analyze',
-  appName: 'Fencing-App',
+  appName: 'TouchStat',
 }
 
 export function hasSupabase(): boolean {

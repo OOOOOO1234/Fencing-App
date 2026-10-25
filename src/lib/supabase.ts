@@ -13,7 +13,7 @@ export function getSupabase(): SupabaseClient | null {
 
 /** Suggested SQL for the user to run in Supabase when keys are pasted. */
 export const SUPABASE_SCHEMA_SQL = `
--- Fencing-App cloud schema (paste in Supabase SQL editor when enabling sync)
+-- TouchStat cloud schema (paste in Supabase SQL editor when enabling sync)
 
 create table if not exists bouts (
   id uuid primary key,

@@ -1,4 +1,4 @@
-# Fencing-App
+# TouchStat
 
 Single page: upload one sabre bout video, pick left or right, see Moneyball attempt / success / fail rates by action.
 
