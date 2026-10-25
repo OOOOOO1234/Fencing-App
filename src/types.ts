@@ -103,6 +103,11 @@ export interface Bout {
   createdAt: string
   updatedAt?: string
   recordedAt?: string
+  /**
+   * Display name of the named opponent for this bout.
+   * Matching across bouts is case-insensitive (see `opponentKey`).
+   */
+  opponentName?: string
   isDemo?: boolean
   hasVideo: boolean
   phrases: Phrase[]
