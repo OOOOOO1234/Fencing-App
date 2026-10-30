@@ -1,0 +1,39 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+[functions.analyze]
+  # Max available on most plans; client aborts at 45s with a clear error.
+  timeout = 26
+
+# Optional alias; /.netlify/functions/analyze is served by Netlify before SPA fallback
+[[redirects]]
+  from = "/api/analyze"
+  to = "/.netlify/functions/analyze"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Hide Netlify's injected "Powered by Netlify" badge (edge HUD script).
+# Docs: CSP without 'unsafe-inline' in script-src blocks the badge iframe.
+# https://docs.netlify.com/manage/projects/powered-by-netlify-badge/
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'"
