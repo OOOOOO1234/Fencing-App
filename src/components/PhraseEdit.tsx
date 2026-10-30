@@ -10,10 +10,18 @@ interface PhraseEditProps {
   onSeek: (seconds: number) => void
   onSave: (next: Phrase) => void
   onRemove: () => void
+  /** Highlight when this phrase is part of a studied opponent sequence. */
+  highlighted?: boolean
 }
 
 /** Compact inline edit — action / opponent / result (+ optional ref words). */
-export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps) {
+export function PhraseRow({
+  phrase,
+  onSeek,
+  onSave,
+  onRemove,
+  highlighted = false,
+}: PhraseEditProps) {
   const [editing, setEditing] = useState(false)
   const [action, setAction] = useState<ActionName>(phrase.action)
   const [opponentAction, setOpponentAction] = useState<ActionName | ''>(
@@ -50,7 +58,7 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
 
   if (editing) {
     return (
-      <li className="log-edit">
+      <li className={highlighted ? 'log-edit log-highlight' : 'log-edit'}>
         <span className="log-time">{formatTime(phrase.timestamp)}</span>
         <label className="log-field">
           <span className="sr-only">You</span>
@@ -106,7 +114,7 @@ export function PhraseRow({ phrase, onSeek, onSave, onRemove }: PhraseEditProps)
   }
 
   return (
-    <li>
+    <li className={highlighted ? 'log-highlight' : undefined}>
       <button type="button" className="log-main" onClick={() => onSeek(phrase.timestamp)}>
         <span>{formatTime(phrase.timestamp)}</span>
         <span>
