@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BarChart } from './components/Charts'
+import { OpponentStudy } from './components/OpponentStudy'
 import { PhraseRow } from './components/PhraseEdit'
 import { HistoryPage } from './HistoryPage'
 import { loadFewShotExamples, rememberCorrection } from './lib/analysis/corrections'
@@ -9,6 +10,10 @@ import { applyPhraseRules } from './lib/analysis/rules'
 import { ACTIONS, type ActionName } from './lib/actions'
 import { extractAudioClips, extractAudioCues } from './lib/audio'
 import { captureSmartFrames } from './lib/frames'
+import {
+  findOpponentSequences,
+  phraseIdsForSequence,
+} from './lib/opponentSequences'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
 import { createDemoBout, newId, saveBout } from './lib/storage'
 import type { Bout, FencerSide, Outcome, Phrase } from './types'
@@ -37,6 +42,8 @@ export default function App() {
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [demoMode, setDemoMode] = useState(false)
+  const [studyKey, setStudyKey] = useState<string | null>(null)
+  const [studyOccurrence, setStudyOccurrence] = useState(0)
 
   useEffect(() => {
     return () => {
@@ -116,6 +123,8 @@ export default function App() {
     setPhrases([])
     setTimeLabel('0:00')
     setStatus(null)
+    setStudyKey(null)
+    setStudyOccurrence(0)
   }
 
   function reset() {
@@ -128,6 +137,8 @@ export default function App() {
     setTimeLabel('0:00')
     setStatus(null)
     setDemoMode(false)
+    setStudyKey(null)
+    setStudyOccurrence(0)
     if (new URLSearchParams(window.location.search).has('demo')) {
       const url = new URL(window.location.href)
       url.searchParams.delete('demo')
@@ -274,6 +285,10 @@ export default function App() {
   const stats = computeStats(phrases)
   const usedActions = stats.byAction.filter((row) => row.attempts > 0)
   const opp = stats.opponentSituation
+  const opponentSequences = findOpponentSequences(phrases)
+  const selectedSequence =
+    opponentSequences.find((seq) => seq.key === studyKey) ?? null
+  const highlightedIds = phraseIdsForSequence(selectedSequence, studyOccurrence)
   const active = Boolean(videoUrl)
 
   return (
@@ -484,6 +499,31 @@ export default function App() {
                   />
                 ) : null}
               </div>
+
+              <OpponentStudy
+                sequences={opponentSequences}
+                selectedKey={studyKey}
+                occurrenceIndex={studyOccurrence}
+                onSelect={(key) => {
+                  setStudyKey(key)
+                  setStudyOccurrence(0)
+                  if (key) {
+                    const seq = opponentSequences.find((s) => s.key === key)
+                    const first = seq?.occurrences[0]
+                    if (first) seekTo(first.startTimestamp)
+                  }
+                }}
+                onJump={(timestamp) => seekTo(timestamp)}
+                onCycle={(delta) => {
+                  if (!selectedSequence) return
+                  const next =
+                    (studyOccurrence + delta + selectedSequence.occurrences.length) %
+                    selectedSequence.occurrences.length
+                  setStudyOccurrence(next)
+                  const occ = selectedSequence.occurrences[next]
+                  if (occ) seekTo(occ.startTimestamp)
+                }}
+              />
             </section>
           ) : null}
 
@@ -553,6 +593,7 @@ export default function App() {
                   onSeek={seekTo}
                   onSave={updatePhrase}
                   onRemove={() => removePhrase(phrase.id)}
+                  highlighted={highlightedIds.has(phrase.id)}
                 />
               ))}
             </ul>
