@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { BarChart } from './components/Charts'
 import { OpponentStudy } from './components/OpponentStudy'
+import { OpponentNameField } from './components/OpponentNameField'
 import { PhraseRow } from './components/PhraseEdit'
 import { HistoryPage } from './HistoryPage'
+import { OpponentsPage } from './OpponentsPage'
 import { loadFewShotExamples, rememberCorrection } from './lib/analysis/corrections'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
@@ -14,12 +16,13 @@ import {
   findOpponentSequences,
   phraseIdsForSequence,
 } from './lib/opponentSequences'
+import { defaultBoutTitle, listKnownOpponents, resolveOpponentName } from './lib/opponents'
 import { computeStats, formatPct, formatTime, parseClock } from './lib/stats'
-import { createDemoBout, newId, saveBout } from './lib/storage'
+import { createDemoBout, listBouts, newId, saveBout } from './lib/storage'
 import type { Bout, FencerSide, Outcome, Phrase } from './types'
 import { OUTCOME_LABELS, OUTCOMES } from './types'
 
-type Page = 'analyze' | 'history'
+type Page = 'analyze' | 'history' | 'opponents'
 
 const DEMO_VIDEO_PATH = '/demo/sabre-sample.webm'
 const DEMO_VIDEO_NAME = 'Demo sabre bout (Commons sample)'
@@ -27,6 +30,8 @@ const DEMO_VIDEO_NAME = 'Demo sabre bout (Commons sample)'
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [page, setPage] = useState<Page>('analyze')
+  const [savedBouts, setSavedBouts] = useState<Bout[]>([])
+  const [opponentName, setOpponentName] = useState('')
   const [boutId, setBoutId] = useState<string | null>(null)
   const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -44,6 +49,16 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false)
   const [studyKey, setStudyKey] = useState<string | null>(null)
   const [studyOccurrence, setStudyOccurrence] = useState(0)
+
+  const knownOpponents = useMemo(() => listKnownOpponents(savedBouts), [savedBouts])
+
+  async function refreshBouts() {
+    setSavedBouts(await listBouts())
+  }
+
+  useEffect(() => {
+    void refreshBouts()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -80,6 +95,7 @@ export default function App() {
           'Demo test run loaded — sample sabre video with seeded Moneyball tags. Press Analyze bout to re-run AI.',
         )
         await saveBout({ ...demo, title: DEMO_VIDEO_NAME, hasVideo: true })
+        await refreshBouts()
       } catch (err) {
         if (!cancelled) {
           setStatus(err instanceof Error ? err.message : 'Demo load failed')
@@ -94,30 +110,43 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount for ?demo=1
   }, [])
 
+  function resolvedOpponent(raw = opponentName): string | undefined {
+    const name = resolveOpponentName(
+      raw,
+      knownOpponents.map((o) => o.name),
+    )
+    return name || undefined
+  }
+
   async function persist(
     nextPhrases: Phrase[],
     id: string,
     title: string,
     filmDate: string,
     created: string,
+    opponentRaw = opponentName,
   ) {
+    const opponent = resolvedOpponent(opponentRaw)
     const bout: Bout = {
       id,
-      title,
+      title: opponent && !file ? defaultBoutTitle(opponent, false) : title,
       side,
       createdAt: created,
       recordedAt: filmDate || undefined,
+      opponentName: opponent,
       hasVideo: true,
       phrases: nextPhrases,
     }
     await saveBout(bout)
+    await refreshBouts()
   }
 
   function startBout(nextFile: File) {
     if (videoUrl) URL.revokeObjectURL(videoUrl)
     const id = newId()
+    const created = new Date().toISOString()
     setBoutId(id)
-    setCreatedAt(new Date().toISOString())
+    setCreatedAt(created)
     setFile(nextFile)
     setVideoUrl(URL.createObjectURL(nextFile))
     setPhrases([])
@@ -125,6 +154,13 @@ export default function App() {
     setStatus(null)
     setStudyKey(null)
     setStudyOccurrence(0)
+    void persist(
+      [],
+      id,
+      nextFile.name.replace(/\.[^.]+$/, '') || nextFile.name,
+      recordedAt,
+      created,
+    )
   }
 
   function reset() {
@@ -313,6 +349,13 @@ export default function App() {
             >
               History
             </button>
+            <button
+              type="button"
+              className={page === 'opponents' ? 'nav-on' : undefined}
+              onClick={() => setPage('opponents')}
+            >
+              Opponents
+            </button>
           </nav>
         </div>
         {page === 'analyze' ? (
@@ -321,6 +364,8 @@ export default function App() {
             turning raw bout footage into clear, actionable action stats for Foil, Épée, and
             Saber.
           </p>
+        ) : page === 'opponents' ? (
+          <p className="lede">Named-opponent history, W/L, and action patterns.</p>
         ) : (
           <p className="lede">Usage and success trends across saved bouts.</p>
         )}
@@ -328,6 +373,15 @@ export default function App() {
 
       {page === 'history' ? (
         <HistoryPage onAnalyze={() => setPage('analyze')} />
+      ) : page === 'opponents' ? (
+        <OpponentsPage
+          bouts={savedBouts}
+          onBoutsChange={refreshBouts}
+          onAnalyzeOpponent={(name) => {
+            setOpponentName(name)
+            setPage('analyze')
+          }}
+        />
       ) : !active ? (
         <section className="upload" aria-labelledby="upload-label">
           <h2 id="upload-label" className="sr-only">
@@ -367,6 +421,14 @@ export default function App() {
             />
           </label>
 
+          <OpponentNameField
+            hint="(optional)"
+            value={opponentName}
+            opponents={knownOpponents}
+            onChange={setOpponentName}
+            onSelect={setOpponentName}
+          />
+
           <label className="file">
             <span>Choose bout video</span>
             <input
@@ -386,6 +448,7 @@ export default function App() {
               <strong>{file?.name}</strong>
               <span> · {side}</span>
               {recordedAt ? <span> · {recordedAt}</span> : null}
+              {resolvedOpponent() ? <span> · vs {resolvedOpponent()}</span> : null}
               {demoMode ? <span> · demo</span> : null}
             </p>
             <button type="button" className="text-btn" onClick={reset}>
@@ -527,8 +590,29 @@ export default function App() {
             </section>
           ) : null}
 
+          <OpponentNameField
+            id="bout-opponent-name"
+            hint="(tags this bout)"
+            value={opponentName}
+            opponents={knownOpponents}
+            onChange={setOpponentName}
+            onSelect={setOpponentName}
+            onCommit={(value) => {
+              if (boutId && file && createdAt) {
+                void persist(
+                  phrases,
+                  boutId,
+                  file.name.replace(/\.[^.]+$/, '') || file.name,
+                  recordedAt,
+                  createdAt,
+                  value,
+                )
+              }
+            }}
+          />
+
           <form className="tag" onSubmit={addPhrase}>
-            <p className="tag-hint">Mark a phrase at the playhead — you + opponent.</p>
+            <p className="tag-hint">Mark a phrase at the playhead — you + opponent action.</p>
             <div className="tag-grid">
               <label>
                 Time
