@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { AuthPage } from './AuthPage'
 import { BarChart } from './components/Charts'
 import { OpponentStudy } from './components/OpponentStudy'
 import { PhraseRow } from './components/PhraseEdit'
 import { HistoryPage } from './HistoryPage'
+import { getCurrentUser, signOut, type AuthUser } from './lib/auth'
 import { loadFewShotExamples, rememberCorrection } from './lib/analysis/corrections'
 import { draftsToPhrases } from './lib/analysis/types'
 import { getAnalysisProvider } from './lib/analysis/provider'
@@ -26,6 +28,8 @@ const DEMO_VIDEO_NAME = 'Demo sabre bout (Commons sample)'
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [authReady, setAuthReady] = useState(false)
   const [page, setPage] = useState<Page>('analyze')
   const [boutId, setBoutId] = useState<string | null>(null)
   const [createdAt, setCreatedAt] = useState<string | null>(null)
@@ -44,6 +48,19 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(false)
   const [studyKey, setStudyKey] = useState<string | null>(null)
   const [studyOccurrence, setStudyOccurrence] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    void getCurrentUser().then((next) => {
+      if (!cancelled) {
+        setUser(next)
+        setAuthReady(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -291,6 +308,21 @@ export default function App() {
   const highlightedIds = phraseIdsForSequence(selectedSequence, studyOccurrence)
   const active = Boolean(videoUrl)
 
+  if (!authReady) {
+    return (
+      <div className="page">
+        <div className="atmosphere" aria-hidden />
+        <p className="auth-loading" role="status">
+          Loading…
+        </p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthPage onAuthed={setUser} />
+  }
+
   return (
     <div className="page">
       <div className="atmosphere" aria-hidden />
@@ -312,6 +344,16 @@ export default function App() {
               onClick={() => setPage('history')}
             >
               History
+            </button>
+            <button
+              type="button"
+              className="nav-account"
+              title={user.email}
+              onClick={() => {
+                void signOut().then(() => setUser(null))
+              }}
+            >
+              Log out
             </button>
           </nav>
         </div>

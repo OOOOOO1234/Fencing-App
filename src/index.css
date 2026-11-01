@@ -120,6 +120,154 @@ button {
   line-height: 1.5;
 }
 
+/* —— Auth / login —— */
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.auth-masthead {
+  margin-bottom: clamp(1.25rem, 3vh, 2rem);
+}
+
+.auth-loading {
+  margin: 30vh auto 0;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.auth-panel {
+  width: min(26rem, 100%);
+  animation: in 0.45s ease both;
+  animation-delay: 0.08s;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.auth-tab {
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  padding: 0.35rem 0.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.auth-tab-on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.auth-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 3.5vw, 1.85rem);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.auth-lede {
+  margin: 0 0 1.15rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 24rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.auth-field input {
+  border: none;
+  border-bottom: 2px solid var(--line);
+  background: transparent;
+  padding: 0.55rem 0;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.auth-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-field input::placeholder {
+  color: #9aa5b5;
+  font-weight: 500;
+}
+
+.auth-submit {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+  border: none;
+  background: var(--ink);
+  color: #fff;
+  padding: 0.7rem 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.auth-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.auth-error {
+  margin: 0;
+  color: var(--against);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.auth-notice {
+  margin: 0;
+  color: var(--for);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.auth-switch {
+  margin: 1.1rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.nav-account {
+  margin-left: 0.35rem;
+}
+
 .date-field {
   display: flex;
   flex-direction: column;
